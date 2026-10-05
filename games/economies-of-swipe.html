@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Economies of Swipe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&display=swap">
+<style>
+/* Layout: a dating app on the projector. One firm's profile card in the middle (its bio is a claim about costs), timer and rules on the left, scoreboard on the right. Light, single look on purpose. */
+:root{
+  --bg:#fff4ee;
+  --panel:#ffffff;
+  --ink:#24141b;
+  --muted:#7d6670;
+  --line:#f0dcd3;
+  --flame:#ff4f45;
+  --flame-2:#ff8a3d;
+  --yes:#16b46a;
+  --no:#f0364b;
+  --gold:#f5b300;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",sans-serif;
+  --f-body:"DM Sans","Segoe UI",Helvetica,Arial,sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%;overflow-x:hidden}
+body{margin:0;padding-inline:16px;background:var(--bg);color:var(--ink);font-family:var(--f-body);position:relative}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--flame);outline-offset:3px}
+
+.app{max-width:1400px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:14px;padding-block:14px}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{font-family:var(--f-display);font-weight:800;font-size:clamp(24px,2.8vw,40px);letter-spacing:-.02em;margin:0;line-height:1}
+.logo span{background:linear-gradient(90deg,var(--flame),var(--flame-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.count{font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.mode{margin-left:auto;font-size:13px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:4px 12px;background:var(--panel)}
+
+.stage{flex:1;display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr) minmax(220px,280px);gap:clamp(12px,2vw,28px);align-items:start}
+.side{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.side h2{font-family:var(--f-display);font-weight:800;font-size:18px;margin:0}
+.howto{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.4}
+.howto b{display:inline-grid;place-items:center;width:1.8em;height:1.8em;border-radius:50%;color:#fff;margin-right:8px;font-size:14px}
+.howto .r b{background:var(--yes)} .howto .l b{background:var(--no)}
+.ring{--p:1;width:96px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--flame) calc(var(--p)*360deg), var(--line) 0);position:relative;align-self:center}
+.ring::before{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--panel)}
+.ring b{position:relative;font-family:var(--f-display);font-weight:800;font-size:34px;font-variant-numeric:tabular-nums}
+.ring.low{background:conic-gradient(var(--no) calc(var(--p)*360deg), var(--line) 0)}
+
+/* The profile card */
+.deck{display:flex;flex-direction:column;align-items:center;gap:14px;min-width:0}
+.cardwrap{width:100%;max-width:560px;position:relative}
+.profile{background:var(--panel);border-radius:26px;box-shadow:0 18px 40px rgba(80,20,30,.14),0 2px 0 var(--line);overflow:hidden;touch-action:pan-y;user-select:none;position:relative;transition:transform .45s cubic-bezier(.3,.7,.3,1),opacity .45s}
+.profile.drag{transition:none}
+.hero{height:clamp(120px,19vh,190px);display:flex;align-items:flex-end;gap:16px;padding:18px 22px;color:#fff;position:relative}
+.avatar{width:clamp(64px,7vw,92px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22);border:3px solid rgba(255,255,255,.85);font-family:var(--f-display);font-weight:800;font-size:clamp(24px,2.6vw,36px);flex:none}
+.who{min-width:0}
+.who .nm{font-family:var(--f-display);font-weight:800;font-size:clamp(24px,2.6vw,38px);line-height:1.02;letter-spacing:-.01em;text-wrap:balance}
+.who .meta{font-size:15px;opacity:.92;margin-top:4px}
+.bio{padding:18px 22px 6px}
+.bio .lbl{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.bio p{margin:6px 0 0;font-size:clamp(20px,2.2vw,32px);font-weight:700;line-height:1.28;text-wrap:pretty;overflow-wrap:break-word}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:12px 22px 20px;padding-right:clamp(150px,16vw,210px)}
+.chips span{border:1.5px solid var(--line);border-radius:99px;padding:4px 12px;font-size:14px;font-weight:600;color:var(--muted)}
+.fx{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-style:italic;font-weight:500}
+.stamp{position:absolute;bottom:16px;padding:6px 16px;border:5px solid currentColor;border-radius:10px;font-family:var(--f-display);font-weight:800;font-size:clamp(20px,2.2vw,30px);letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.9);opacity:0;transition:opacity .2s}
+.stamp.yes{color:var(--yes);right:20px;transform:rotate(-8deg)}
+.stamp.no{color:var(--no);right:20px;transform:rotate(8deg)}
+.profile.out-right{transform:translateX(5%) rotate(3deg)}
+.profile.out-left{transform:translateX(-5%) rotate(-3deg)}
+
+.swipes{display:flex;gap:28px;justify-content:center}
+.sbtn{width:clamp(64px,6vw,84px);aspect-ratio:1;border-radius:50%;border:0;background:var(--panel);box-shadow:0 8px 20px rgba(80,20,30,.14);display:grid;place-items:center;font-size:clamp(28px,3vw,38px);font-weight:800;transition:transform .12s}
+.sbtn:hover{transform:scale(1.07)}
+.sbtn.no{color:var(--no)} .sbtn.yes{color:var(--yes)}
+.sbtn svg{width:46%;height:46%}
+
+.result{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.verdict{font-family:var(--f-display);font-weight:800;font-size:clamp(22px,2.4vw,32px);line-height:1.1}
+.verdict.good{color:var(--yes)} .verdict.bad{color:var(--no)}
+.why{margin:0;font-size:clamp(15px,1.4vw,19px);line-height:1.45;overflow-wrap:break-word}
+.award .h{display:block;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.award .row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--line);background:var(--panel);border-radius:99px;padding:6px 14px;font-weight:700;font-size:15px}
+.chip .n{opacity:.55;font-size:13px;margin-right:4px}
+.chip[aria-pressed="true"]{background:var(--yes);border-color:var(--yes);color:#fff}
+
+/* Scoreboard */
+.rows{display:flex;flex-direction:column;gap:12px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:baseline}
+.srow .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .pts{font-family:var(--f-display);font-weight:800;font-variant-numeric:tabular-nums}
+.srow .bar{grid-column:1 / -1;height:9px;border-radius:99px;background:var(--line);overflow:hidden}
+.srow .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--flame),var(--flame-2));transition:width .6s}
+.solo-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--bg);border-radius:14px;padding:10px 12px}
+.stat b{display:block;font-family:var(--f-display);font-weight:800;font-size:30px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:9px 18px;font-weight:700;font-size:15px}
+.btn:hover{border-color:var(--muted)}
+.btn.go{background:linear-gradient(90deg,var(--flame),var(--flame-2));border:0;color:#fff;font-size:17px;padding:10px 24px}
+.keys{margin-left:auto;font-size:13px;color:var(--muted)}
+kbd{font-family:var(--f-body);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--panel);color:var(--ink)}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(255,244,238,.96);display:grid;place-items:center;padding:16px;z-index:5;overflow:auto}
+#setup{position:absolute;inset:0 0 auto 0;min-height:100%;overflow:visible}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:24px;box-shadow:0 18px 40px rgba(80,20,30,.12);padding:clamp(20px,3vw,40px);max-width:780px;width:100%;display:flex;flex-direction:column;gap:18px}
+.card h1{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,6vw,78px);line-height:.95;letter-spacing:-.03em;margin:0;text-wrap:balance}
+.card h1 span{background:linear-gradient(90deg,var(--flame),var(--flame-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.card p{margin:0;font-size:18px;line-height:1.5}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modebtn{text-align:left;border:2px solid var(--line);background:var(--panel);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.modebtn b{font-family:var(--f-display);font-size:20px}
+.modebtn span{font-size:14px;color:var(--muted);line-height:1.4}
+.modebtn[aria-pressed="true"]{border-color:var(--flame);box-shadow:0 0 0 3px rgba(255,79,69,.15)}
+.setrow{display:flex;gap:12px;flex-wrap:wrap}
+.setrow label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.setrow select{font:inherit;font-size:17px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.names input{font:inherit;font-size:17px;font-weight:600;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;width:100%}
+.big{font-family:var(--f-display);font-weight:800;font-size:clamp(56px,10vw,150px);line-height:.9;text-align:center;letter-spacing:-.03em;background:linear-gradient(90deg,var(--flame),var(--flame-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.pod{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--bg);font-size:20px;font-weight:700}
+.pod .pl{font-family:var(--f-display);font-weight:800;color:var(--flame)}
+.pod.win{background:linear-gradient(90deg,var(--flame),var(--flame-2));color:#fff}
+.pod.win .pl{color:#fff}
+.podium{display:flex;flex-direction:column;gap:10px}
+
+@media (max-width:1100px){
+  .stage{grid-template-columns:minmax(0,1fr) minmax(200px,260px)}
+  .side.rules{display:none}
+}
+@media (max-width:760px){
+  .stage{grid-template-columns:1fr}
+  .keys{display:none}
+  .modes{grid-template-columns:1fr}
+  .overlay{padding:10px}
+  .card{padding:18px;gap:14px}
+  .card h1{font-size:clamp(34px,11vw,56px)}
+  .hero{padding:14px 16px}
+  .bio,.chips{padding-inline:16px}
+}
+</style>
+</head>
+<body>
+<noscript><div style="position:fixed;inset:0;z-index:99;background:#fff4ee;color:#24141b;display:grid;place-items:center;padding:24px;font:20px/1.5 Arial,sans-serif;text-align:center"><div><b style="color:#ff4f45;font-size:28px">This preview has scripts turned off.</b><br>Download the file, then double-click it to open it in Chrome, Safari, Edge or Firefox.</div></div></noscript>
+
+
+<div class="app">
+  <header class="top">
+    <h1 class="logo">Economies of <span>Swipe</span></h1>
+    <span class="count" id="count">Profile 1 of 16</span>
+    <span class="mode" id="modeTag">Class game</span>
+  </header>
+
+  <div class="stage">
+    <aside class="side rules" aria-label="How to play">
+      <h2>Is this firm telling the truth?</h2>
+      <ul class="howto">
+        <li class="r"><b>✓</b>Swipe right if the claim is true</li>
+        <li class="l"><b>✕</b>Swipe left if it's a red flag</li>
+      </ul>
+      <div class="ring" id="ring"><b id="secs">15</b></div>
+      <p style="margin:0;font-size:14px;color:var(--muted);text-align:center" id="ringNote">Thumbs up or down when the clock hits zero</p>
+    </aside>
+
+    <section class="deck" id="deck">
+      <div class="cardwrap">
+        <article class="profile" id="profile">
+          <div class="hero" id="hero">
+            <div class="avatar" id="avatar">AC</div>
+            <div class="who"><div class="nm" id="fname">Loading…</div><div class="meta" id="fmeta"></div></div>
+          </div>
+          <div class="bio"><span class="lbl">Bio</span><p id="claim"></p></div>
+          <div class="chips" id="tags"></div>
+          <div class="stamp yes" id="stampYes">Green flag</div>
+          <div class="stamp no" id="stampNo">Red flag</div>
+        </article>
+      </div>
+      <div class="swipes" id="swipes">
+        <button class="sbtn no" id="swipeL" type="button" aria-label="Swipe left: false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button class="sbtn yes" id="swipeR" type="button" aria-label="Swipe right: true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.5 3 4.5 6.9 4.5c2.1 0 3.6 1.1 5.1 2.9 1.5-1.8 3-2.9 5.1-2.9 3.9 0 6 4 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg></button>
+      </div>
+      <section class="result" id="result" hidden>
+        <div class="verdict" id="verdict"></div>
+        <p class="why" id="why"></p>
+        <div class="award" id="award"><span class="h">Tap every team that swiped the right way</span><div class="row" id="chips"></div></div>
+      </section>
+    </section>
+
+    <aside class="side" aria-label="Scoreboard">
+      <h2 id="boardTitle">Scoreboard</h2>
+      <div class="rows" id="rows"></div>
+      <div class="solo-stats" id="soloStats" hidden>
+        <div class="stat"><b id="sRight">0</b><span>Matches</span></div>
+        <div class="stat"><b id="sStreak">0</b><span>Streak</span></div>
+      </div>
+    </aside>
+  </div>
+
+  <nav class="ctrl">
+    <button class="btn go" id="next" type="button">Reveal</button>
+    <button class="btn" id="pause" type="button">Pause timer</button>
+    <button class="btn" id="back" type="button">Previous</button>
+    <button class="btn" id="full" type="button">Full screen</button>
+    <button class="btn" id="restart" type="button">New game</button>
+    <span class="keys"><kbd>←</kbd>/<kbd>→</kbd> swipe · <kbd>Enter</kbd> reveal / next · <kbd>Space</kbd> timer · <kbd>1</kbd>–<kbd>6</kbd> award teams</span>
+  </nav>
+</div>
+
+<div class="overlay" id="setup">
+  <div class="card">
+    <h1>Economies of <span>Swipe</span></h1>
+    <p>Sixteen firms are looking for a match. Each one's bio makes a claim about its costs. Swipe right if the claim is true, left if it's a red flag.</p>
+    <div class="modes">
+      <button type="button" class="modebtn" id="modeClass" aria-pressed="true"><b>Class game</b><span>Teams give a thumbs up or down. You swipe for the room, then tap the teams that got it right.</span></button>
+      <button type="button" class="modebtn" id="modeSolo" aria-pressed="false"><b>Solo practice</b><span>For studying on a phone or laptop. Swipe the card yourself and keep your streak going.</span></button>
+    </div>
+    <div class="setrow" id="classOpts">
+      <label for="nteams">Teams<select id="nteams"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+      <label for="tsec">Timer<select id="tsec"><option value="10">10 sec</option><option value="15" selected>15 sec</option><option value="20">20 sec</option><option value="30">30 sec</option></select></label>
+    </div>
+    <div class="names" id="names"></div>
+    <div class="ctrl"><button class="btn go" id="start" type="button">Start swiping</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="end" hidden>
+  <div class="card">
+    <div class="big" id="endBig">It's a match</div>
+    <div class="podium" id="podium"></div>
+    <p>Takeaways: when AC falls, MC is below it; when AC rises, MC is above it. Economies of scale are about average cost, and returns to scale are about technology. In the short run, STC = TVC + rK̄.</p>
+    <div class="ctrl"><button class="btn go" id="again" type="button">Play again</button></div>
+  </div>
+</div>
+
+<script>
+const F = s => `<span class="fx">${s}</span>`;
+const DEFAULT_NAMES = ["Hearts","Flames","Roses","Sparks","Crushes","Dates"];
+const GRADS = [["#ff4f45","#ff8a3d"],["#7b5cff","#ff5fa2"],["#00a3a3","#3ad29f"],["#ff8a3d","#f5b300"],["#2f7bff","#00c2d1"],["#e23b8a","#ff7a59"]];
+
+// t = is the claim true?
+const CARDS = [
+ {n:"Fourfold Fabrication", m:"3 mi away · Est. 2019", tags:["TC = 4Q","No fixed costs","Linear"],
+  q:`My total cost is ${F("TC = 4Q")}. My MC is 4 and my AC is 4 at every quantity.`, t:true,
+  e:`${F("MC = dTC/dQ = 4")} and ${F("AC = 4Q/Q = 4")}. A straight line through the origin means AC = MC everywhere.`},
+ {n:"Marginal Muffins", m:"1 mi away · Bakery", tags:["Growing fast","Falling AC"],
+  q:`My average cost keeps falling as I bake more, so my marginal cost must be above my average cost.`, t:false,
+  e:`Red flag. If AC is falling, the last unit costs <b>less</b> than the average and pulls it down, so MC &lt; AC.`},
+ {n:"Uphill Outfitters", m:"6 mi away · Gear shop", tags:["Rising AC","Honest"],
+  q:`My average cost is rising as I sell more. That means my MC is above my AC.`, t:true,
+  e:`True. Each extra unit costs more than the current average, so it pulls the average up: MC &gt; AC.`},
+ {n:"Flatline Fitness", m:"2 mi away · Gym", tags:["Steady","Constant AC"],
+  q:`My average cost doesn't change as I add members, so MC = AC.`, t:true,
+  e:`True. If adding a unit leaves the average unchanged, that unit must cost exactly the average.`},
+ {n:"Big Bob's Bricks", m:"9 mi away · Masonry", tags:["Economies of scale","Big energy"],
+  q:`I have economies of scale: my average cost rises the more I produce.`, t:false,
+  e:`Red flag. Economies of scale mean average cost <b>falls</b> as output rises. Rising AC is diseconomies of scale.`},
+ {n:"Specialty Sushi Co.", m:"4 mi away · Restaurant", tags:["Division of labor","Chef's kiss"],
+  q:`As I grow, each worker can specialize in one task, and my cost per roll falls. That's an economy of scale.`, t:true,
+  e:`True. Specialization is a source of economies of scale: average cost falls as output rises.`},
+ {n:"Middle Manager Media", m:"12 mi away · Agency", tags:["Lots of meetings","Org charts"],
+  q:`As I grow, my need for managers grows faster than my output, so my cost per unit rises.`, t:true,
+  e:`True. That's managerial diseconomies, which cause diseconomies of scale.`},
+ {n:"Minimum Effort Movers", m:"7 mi away · Moving co.", tags:["MES","Efficient"],
+  q:`My minimum efficient scale is the output where my long-run <b>marginal</b> cost is lowest.`, t:false,
+  e:`Red flag. MES is where long-run <b>average</b> cost is at its minimum.`},
+ {n:"Megawatt Utilities", m:"30 mi away · Power", tags:["Huge MES","Market leader"],
+  q:`My minimum efficient scale is huge compared with the market, so small firms can compete with me easily.`, t:false,
+  e:`Red flag. A large MES relative to market size means big economies of scale, which makes it <b>harder</b> for small firms to compete.`},
+ {n:"Square Law Studio", m:"5 mi away · Design", tags:[`Q = L²`,"Fixed wage"],
+  q:`My production function is ${F("Q = L²")} and the wage doesn't change with output. I have economies of scale.`, t:true,
+  e:`True. ${F("Q = L²")} has increasing returns to scale, so with fixed input prices, average cost falls as Q rises.`},
+ {n:"Root Cellar Farms", m:"15 mi away · Farm", tags:[`Q = √L`,"Down to earth"],
+  q:`My production function is ${F("Q = √L")} with a fixed wage, and my average cost falls as I grow.`, t:false,
+  e:`Red flag. ${F("Q = √L")} has decreasing returns to scale, so with a fixed wage, AC <b>rises</b> with output.`},
+ {n:"Bulk Bin Bagels", m:"2 mi away · Bakery", tags:["Constant RTS","Buys in bulk"],
+  q:`My technology has constant returns to scale, but I get quantity discounts on flour, so I still have economies of scale.`, t:true,
+  e:`True. Economies of scale depend on average cost, and input prices that fall with volume can lower AC even with constant returns.`},
+ {n:"Paradox Partners", m:"8 mi away · Consulting", tags:["IRS","Complicated"],
+  q:`Increasing returns to scale <i>and</i> diseconomies of scale at the same time? That's impossible.`, t:false,
+  e:`Red flag. It's possible. Managerial diseconomies can raise average cost even when the technology has increasing returns to scale.`},
+ {n:"Elastic Eats", m:"3 mi away · Food truck", tags:[`ε = 0.8`,"Numbers person"],
+  q:`My output elasticity of total cost is ${F("MC/AC = 0.8")}, so I have economies of scale.`, t:true,
+  e:`True. ${F("ε<sub>TC,Q</sub> = MC/AC")} less than 1 means MC &lt; AC, so AC is falling: economies of scale.`},
+ {n:"Short Run Shoes", m:"1 mi away · Retail", tags:["Fixed K̄","Short term only"],
+  q:`My short-run cost is ${F("STC = TVC + TFC")}, and with capital fixed, ${F("TFC = rK̄")}.`, t:true,
+  e:`True. Fixed cost is what the firm pays for its K̄ units of capital, whatever it produces.`},
+ {n:"Growing Gap Glass", m:"10 mi away · Factory", tags:["STC vs TVC","Drama"],
+  q:`The vertical gap between my STC and TVC curves gets bigger as my output grows.`, t:false,
+  e:`Red flag. The gap is fixed cost, ${F("rK̄")}, which is the same at every Q. The curves are parallel.`}
+];
+
+let S=null, timer=null, mode="class";
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function initials(n){return n.split(/\s+/).filter(w=>/^[A-Za-z]/.test(w)).slice(0,2).map(w=>w[0]).join("").toUpperCase()}
+
+function buildNameInputs(){
+  const n=+$("nteams").value, box=$("names"), prev=[...box.querySelectorAll("input")].map(i=>i.value);
+  box.innerHTML="";
+  for(let i=0;i<n;i++){
+    const inp=document.createElement("input"); inp.id="team"+i; inp.maxLength=18;
+    inp.value=prev[i]||DEFAULT_NAMES[i]; inp.setAttribute("aria-label",`Team ${i+1} name`); box.appendChild(inp);
+  }
+}
+function setMode(m){
+  mode=m;
+  $("modeClass").setAttribute("aria-pressed",m==="class"); $("modeSolo").setAttribute("aria-pressed",m==="solo");
+  $("classOpts").hidden=$("names").hidden=(m==="solo");
+}
+
+function fresh(names,secs,m){
+  return {mode:m, names, secs, i:0, phase:"card", clock:secs, paused:false, call:CARDS.map(()=>null),
+          award:CARDS.map(()=>names.map(()=>false))};
+}
+function teamScores(){return S.names.map((_,t)=>S.award.reduce((s,a)=>s+(a[t]?100:0),0))}
+function soloRight(){return S.call.reduce((s,c,i)=>s+(c!==null&&c===CARDS[i].t?1:0),0)}
+function soloStreak(){let k=0;for(let i=S.i;i>=0;i--){const c=S.call[i];if(c===null)continue;if(c===CARDS[i].t)k++;else break}return k}
+
+function startClock(){
+  stopClock(); if(S.mode==="solo")return;
+  timer=setInterval(()=>{
+    if(S.phase!=="card"||S.paused)return;
+    S.clock=Math.max(0,S.clock-1);
+    if(S.clock===0){stopClock();beep([660,880],.15)}
+    renderClock();
+  },1000);
+}
+function stopClock(){if(timer){clearInterval(timer);timer=null}}
+function renderClock(){
+  const r=$("ring");
+  if(S.phase==="card"&&S.mode==="class"){
+    $("secs").textContent=S.clock===0?"Vote":S.clock; $("secs").style.fontSize=S.clock===0?"22px":"";
+    r.style.setProperty("--p",S.clock/S.secs); r.classList.toggle("low",S.clock<=4);
+  } else { $("secs").textContent="✓"; $("secs").style.fontSize=""; r.style.setProperty("--p",0); r.classList.remove("low"); }
+  $("ring").hidden=S.mode==="solo"; $("ringNote").textContent=S.mode==="solo"?"Drag the card, tap a button, or use the arrow keys.":"Thumbs up or down when the clock hits zero";
+  $("pause").textContent=S.paused?"Resume timer":"Pause timer";
+}
+
+function renderCard(){
+  const c=CARDS[S.i], g=GRADS[S.i%GRADS.length], p=$("profile");
+  $("count").textContent=`Profile ${S.i+1} of ${CARDS.length}`;
+  $("hero").style.background=`linear-gradient(135deg,${g[0]},${g[1]})`;
+  $("avatar").textContent=initials(c.n);
+  $("fname").textContent=c.n; $("fmeta").textContent=c.m;
+  $("claim").innerHTML=c.q;
+  $("tags").innerHTML=c.tags.map(t=>`<span>${esc(t)}</span>`).join("");
+  const rev=S.phase==="reveal";
+  p.classList.remove("out-left","out-right"); p.style.transform="";
+  $("stampYes").style.opacity=rev&&c.t?1:0; $("stampNo").style.opacity=rev&&!c.t?1:0;
+  if(rev) p.classList.add(c.t?"out-right":"out-left");
+  $("swipes").hidden=rev;
+  $("result").hidden=!rev;
+  if(rev){
+    const call=S.call[S.i], v=$("verdict");
+    if(call===null){ v.className="verdict "+(c.t?"good":"bad"); v.textContent=c.t?"Green flag: it's true":"Red flag: it's false"; }
+    else if(call===c.t){ v.className="verdict good"; v.textContent=S.mode==="solo"?"It's a match!":"The room got it. It's a match!"; }
+    else { v.className="verdict bad"; v.textContent=S.mode==="solo"?"You got played":"The room got played"; }
+    $("why").innerHTML=c.e;
+    $("award").hidden=S.mode==="solo";
+    if(S.mode==="class"){
+      $("chips").innerHTML=S.names.map((n,t)=>`<button type="button" class="chip" id="chip${t}" aria-pressed="${S.award[S.i][t]}"><span class="n">${t+1}</span>${esc(n)}</button>`).join("");
+      S.names.forEach((_,t)=>$("chip"+t).addEventListener("click",()=>toggle(t)));
+    }
+  }
+  $("next").textContent = S.phase==="card" ? "Reveal" : (S.i>=CARDS.length-1 ? "See results" : "Next profile");
+  $("back").disabled=S.i===0;
+  $("pause").hidden=S.mode==="solo"||S.phase!=="card";
+}
+function renderBoard(){
+  const solo=S.mode==="solo";
+  $("modeTag").textContent=solo?"Solo practice":"Class game";
+  $("rows").hidden=solo; $("soloStats").hidden=!solo;
+  $("boardTitle").textContent=solo?"Your stats":"Scoreboard";
+  if(solo){ $("sRight").textContent=`${soloRight()}/${S.call.filter(c=>c!==null).length}`; $("sStreak").textContent=soloStreak(); return; }
+  const sc=teamScores(), max=Math.max(100,...sc);
+  $("rows").innerHTML=S.names.map((n,i)=>`<div class="srow"><span class="nm">${esc(n)}</span><span class="pts">${sc[i]}</span><span class="bar"><i style="width:${sc[i]/max*100}%"></i></span></div>`).join("");
+}
+function render(){renderCard();renderBoard();renderClock()}
+
+function swipe(dir){ // dir: true = right
+  if(S.phase!=="card")return;
+  S.call[S.i]=dir; S.phase="reveal"; stopClock();
+  beep(dir===CARDS[S.i].t?[784,1047]:[300,220],.12);
+  render();
+}
+function next(){
+  if(S.phase==="card"){ if(S.mode==="solo")return; S.phase="reveal"; stopClock(); render(); return; }
+  if(S.i>=CARDS.length-1){endGame();return}
+  S.i++; S.phase="card"; S.clock=S.secs; S.paused=false; render(); startClock();
+}
+function back(){ if(S.i===0)return; S.i--; S.phase="reveal"; stopClock(); render(); }
+function toggle(t){
+  if(S.phase!=="reveal"||S.mode!=="class"||t>=S.names.length)return;
+  S.award[S.i][t]=!S.award[S.i][t]; if(S.award[S.i][t])beep([784],.1); renderBoard(); renderCard();
+}
+function endGame(){
+  stopClock();
+  if(S.mode==="solo"){
+    const r=soloRight();
+    $("endBig").textContent=r>=13?"It's a match":r>=9?"Second date":"Keep swiping";
+    $("podium").innerHTML=`<div class="pod win"><span class="pl">♥</span><span>Your matches</span><span>${r} / ${CARDS.length}</span></div>`;
+  } else {
+    const sc=teamScores(), order=S.names.map((n,i)=>({n,s:sc[i]})).sort((a,b)=>b.s-a.s), top=order[0].s;
+    $("endBig").textContent="It's a match";
+    $("podium").innerHTML=order.map((o,i)=>`<div class="pod${o.s===top?" win":""}"><span class="pl">${i+1}</span><span>${esc(o.n)}</span><span>${o.s}</span></div>`).join("");
+  }
+  $("end").hidden=false; beep([523,659,784],.18);
+}
+function start(){
+  const names = mode==="solo" ? ["You"] : [...Array(+$("nteams").value)].map((_,i)=>($("team"+i).value.trim()||DEFAULT_NAMES[i]));
+  S=fresh(names,+$("tsec").value,mode); $("setup").hidden=true; $("end").hidden=true; render(); startClock();
+  window.scrollTo(0,0);
+}
+
+// Drag to swipe
+(function(){
+  const p=$("profile"); let x0=null, dx=0;
+  p.addEventListener("pointerdown",e=>{ if(!S||S.phase!=="card")return; x0=e.clientX; dx=0; p.classList.add("drag"); p.setPointerCapture(e.pointerId); });
+  p.addEventListener("pointermove",e=>{ if(x0===null)return; dx=e.clientX-x0; p.style.transform=`translateX(${dx}px) rotate(${dx/22}deg)`;
+    $("stampYes").style.opacity=Math.max(0,Math.min(1,dx/120)); $("stampNo").style.opacity=Math.max(0,Math.min(1,-dx/120)); });
+  const end=()=>{ if(x0===null)return; p.classList.remove("drag"); x0=null;
+    if(Math.abs(dx)>90){ swipe(dx>0); } else { p.style.transform=""; $("stampYes").style.opacity=0; $("stampNo").style.opacity=0; } };
+  p.addEventListener("pointerup",end); p.addEventListener("pointercancel",end);
+})();
+
+let actx=null;
+function beep(freqs,dur){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    freqs.forEach((f,i)=>{
+      const o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime+i*dur*.8;
+      o.type="sine";o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.14,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+dur*1.6);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+dur*1.7);
+    });
+  }catch(e){}
+}
+
+$("modeClass").addEventListener("click",()=>setMode("class"));
+$("modeSolo").addEventListener("click",()=>setMode("solo"));
+$("nteams").addEventListener("change",buildNameInputs);
+$("start").addEventListener("click",start);
+$("swipeL").addEventListener("click",()=>swipe(false));
+$("swipeR").addEventListener("click",()=>swipe(true));
+$("next").addEventListener("click",next);
+$("back").addEventListener("click",back);
+$("pause").addEventListener("click",()=>{S.paused=!S.paused;renderClock()});
+$("again").addEventListener("click",()=>{$("end").hidden=true;$("setup").hidden=false;window.scrollTo(0,0)});
+$("restart").addEventListener("click",()=>{stopClock();$("setup").hidden=false;window.scrollTo(0,0)});
+$("full").addEventListener("click",()=>{
+  if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{})}
+  else{document.documentElement.requestFullscreen?.().catch(()=>{})}
+});
+document.addEventListener("keydown",e=>{
+  if(!$("setup").hidden){ if(e.key==="Enter"&&e.target.tagName!=="SELECT"&&e.target.tagName!=="BUTTON"){e.preventDefault();start();} return; }
+  if(!$("end").hidden||!S)return;
+  if(e.key==="ArrowRight"){e.preventDefault();swipe(true)}
+  else if(e.key==="ArrowLeft"){e.preventDefault();swipe(false)}
+  else if(e.key==="Enter"){e.preventDefault();next()}
+  else if(e.key===" "){e.preventDefault();if(S.phase==="card"&&S.mode==="class"){S.paused=!S.paused;renderClock()}}
+  else if(/^[1-6]$/.test(e.key)){toggle(+e.key-1)}
+});
+
+buildNameInputs(); setMode("class");
+S=fresh(DEFAULT_NAMES.slice(0,4),15,"class"); render();
+</script>
+
+</body>
+</html>
