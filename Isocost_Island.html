@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Isocost Island</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Figtree:wght@400;600;800&display=swap">
+<style>
+/* Layout: a villa at night for the projector. Phone "text" with the question on the left, the public-vote leaderboard on the right, answers underneath. Single dark look on purpose. */
+:root{
+  --night:#1a0f1f;
+  --surface:#28172f;
+  --line:#3d2646;
+  --cream:#fff3ea;
+  --muted:#c9b2c4;
+  --pink:#ff4f8b;
+  --sun:#ffa24c;
+  --pool:#3fd6d0;
+  --lime:#b6e35a;
+  --good:#5ee08a; --bad:#ff6b6b;
+  --f-display:"Shrikhand","Cooper Black",Georgia,serif;
+  --f-body:"Figtree","Segoe UI",Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;padding-inline:16px;background:var(--night);color:var(--cream);font-family:var(--f-body);
+  background-image:radial-gradient(120% 60% at 50% 115%, rgba(255,79,139,.22), transparent 60%),radial-gradient(60% 40% at 90% -10%, rgba(63,214,208,.12), transparent 70%)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--pool);outline-offset:3px}
+
+.app{max-width:1440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:clamp(10px,1.6vh,18px);padding-block:14px}
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{font-family:var(--f-display);font-size:clamp(26px,3vw,44px);line-height:1;color:var(--pink);text-shadow:0 2px 0 #00000055;margin:0}
+.logo span{color:var(--sun)}
+.ep{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.timer{margin-left:auto;display:flex;align-items:center;gap:10px}
+.ring{--p:1;width:clamp(54px,5.6vw,78px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--pool) calc(var(--p)*360deg), var(--line) 0);position:relative}
+.ring::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--night)}
+.ring b{position:relative;font-size:clamp(22px,2.4vw,32px);font-weight:800;font-variant-numeric:tabular-nums}
+.ring.low{background:conic-gradient(var(--bad) calc(var(--p)*360deg), var(--line) 0)}
+
+.stage{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,320px);gap:clamp(12px,2vw,28px);min-height:0}
+.main{display:flex;flex-direction:column;gap:clamp(10px,1.6vh,18px);min-width:0}
+
+/* The text message */
+.phone{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:14px clamp(14px,2vw,24px) clamp(16px,2vh,24px);display:flex;flex-direction:column;gap:10px}
+.notif{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.notif .dot{width:30px;height:30px;border-radius:8px;background:var(--pink);display:grid;place-items:center;font-weight:800;color:#2b0a17;font-size:15px;flex:none}
+.notif b{color:var(--cream);font-weight:800}
+.notif .badge{margin-left:auto;font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:99px;background:var(--line);color:var(--muted)}
+.notif .badge.casa{background:var(--sun);color:#2b1400}
+.bubble{align-self:flex-start;max-width:100%;background:#3a2142;border-radius:20px 20px 20px 6px;padding:clamp(14px,2vh,22px) clamp(16px,2vw,26px)}
+.q{margin:0;font-size:clamp(22px,2.6vw,40px);font-weight:800;line-height:1.22;text-wrap:balance}
+.gotatext{font-family:var(--f-display);color:var(--pink);font-size:clamp(18px,1.8vw,26px)}
+@media (prefers-reduced-motion:no-preference){.bubble.in{animation:pop .45s cubic-bezier(.2,1.5,.4,1)}}
+@keyframes pop{from{transform:translateY(14px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+.fx{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-style:italic;font-weight:500;white-space:nowrap}
+
+.answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ans{display:flex;align-items:center;gap:14px;border-radius:16px;padding:clamp(12px,1.8vh,20px) 18px;font-size:clamp(17px,1.8vw,27px);font-weight:600;line-height:1.25;color:#1b0d16;min-width:0;transition:opacity .25s, box-shadow .25s}
+.ans .k{flex:none;width:1.9em;height:1.9em;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.18);font-weight:800}
+.ans .t{min-width:0}
+.ans.c1{background:var(--pink)} .ans.c2{background:var(--sun)} .ans.c3{background:var(--pool)} .ans.c4{background:var(--lime)}
+.revealed .ans{opacity:.25}
+.revealed .ans.right{opacity:1;box-shadow:0 0 0 4px var(--cream)}
+.ans .tick{margin-left:auto;font-weight:800;flex:none}
+
+.after{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;align-items:start}
+.why{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 18px;font-size:clamp(15px,1.4vw,20px);line-height:1.45;margin:0}
+.why .h,.award .h{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:4px;font-family:var(--f-body)}
+.award{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 18px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--line);background:transparent;border-radius:99px;padding:7px 14px;font-weight:800;font-size:16px}
+.chip .n{opacity:.6;font-size:13px;margin-right:4px}
+.chip[aria-pressed="true"]{background:var(--good);border-color:var(--good);color:#06240f}
+
+/* Leaderboard */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.board h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0;color:var(--sun)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:baseline}
+.row .nm{font-weight:800;font-size:clamp(15px,1.4vw,19px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .pts{font-weight:800;font-variant-numeric:tabular-nums;font-size:clamp(15px,1.4vw,19px)}
+.bar{grid-column:1 / -1;height:10px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--pink);transition:width .7s cubic-bezier(.3,.7,.3,1)}
+.row.lead .bar i{background:var(--sun)}
+.row .tag{font-size:12px;color:var(--muted);grid-column:1 / -1;margin-top:-2px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:9px 18px;font-weight:600;font-size:15px}
+.btn:hover{border-color:var(--muted)}
+.btn.go{background:var(--pink);border-color:var(--pink);color:#2b0a17;font-weight:800;font-size:18px;padding:9px 24px}
+.keys{margin-left:auto;font-size:13px;color:var(--muted)}
+kbd{font-family:var(--f-body);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--cream)}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(18,9,22,.94);display:grid;place-items:center;padding:16px;z-index:5;overflow:auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:clamp(20px,3vw,40px);max-width:820px;width:100%;display:flex;flex-direction:column;gap:18px}
+.card h1{font-family:var(--f-display);font-weight:400;font-size:clamp(44px,6.5vw,88px);line-height:.95;margin:0;color:var(--pink);text-wrap:balance}
+.card h1 span{color:var(--sun)}
+.card p{margin:0;font-size:18px;line-height:1.5;color:#efdfe8}
+.rules{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:17px;line-height:1.4;margin:0}
+.rules dt{font-weight:800;color:var(--pool)}
+.rules dd{margin:0;color:#efdfe8}
+.setrow{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.setrow label{display:flex;flex-direction:column;gap:5px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.setrow select{font:inherit;font-size:17px;background:var(--night);color:var(--cream);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.names input{font:inherit;font-size:17px;font-weight:600;background:var(--night);color:var(--cream);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;width:100%}
+.big{font-family:var(--f-display);font-size:clamp(56px,11vw,170px);line-height:.9;text-align:center;color:var(--pink)}
+.big small{display:block;font-family:var(--f-body);font-weight:800;font-size:.22em;color:var(--cream);letter-spacing:.06em;margin-top:.5em}
+@media (prefers-reduced-motion:no-preference){.big{animation:pop .5s cubic-bezier(.2,1.5,.4,1)}}
+.podium{display:flex;flex-direction:column;gap:10px}
+.pod{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 14px;border-radius:14px;background:var(--night);font-size:20px;font-weight:800}
+.pod .pl{font-family:var(--f-display);font-weight:400;color:var(--sun);font-size:24px;min-width:2ch}
+.pod.dumped{opacity:.75}
+.pod .st{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pod.win{background:var(--pink);color:#2b0a17}
+.pod.win .pl,.pod.win .st{color:#2b0a17}
+
+@media (max-width:900px){
+  .stage{grid-template-columns:1fr}
+  .after{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .answers{grid-template-columns:1fr}
+  .keys{display:none}
+}
+</style>
+</head>
+<body>
+<noscript><div style="position:fixed;inset:0;z-index:99;background:#1a0f1f;color:#fff3ea;display:grid;place-items:center;padding:24px;font:20px/1.5 Arial,sans-serif;text-align:center"><div><b style="color:#ff4f8b;font-size:28px">This preview has scripts turned off.</b><br>Download the file, then double-click it to open it in Chrome, Safari, Edge or Firefox.</div></div></noscript>
+
+
+<div class="app">
+  <header class="top">
+    <h1 class="logo">Isocost <span>Island</span></h1>
+    <span class="ep" id="ep">Text 1 of 14</span>
+    <div class="timer"><div class="ring" id="ring"><b id="secs">25</b></div></div>
+  </header>
+
+  <div class="stage">
+    <main class="main" id="main">
+      <section class="phone">
+        <div class="notif"><span class="dot">!</span><span><b>Villa Phone</b> · now</span><span class="badge" id="badge">100 pts</span></div>
+        <div class="bubble in" id="bubble">
+          <div class="gotatext">I got a text!</div>
+          <p class="q" id="q">Loading the villa…</p>
+        </div>
+      </section>
+      <div class="answers" id="answers"></div>
+      <div class="after" id="after" hidden>
+        <p class="why" id="why"></p>
+        <div class="award">
+          <span class="h">Tap every villa that got it right</span>
+          <div class="chips" id="chips"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="board" aria-label="Leaderboard">
+      <h2>Public vote</h2>
+      <div id="rows" style="display:flex;flex-direction:column;gap:12px"></div>
+    </aside>
+  </div>
+
+  <nav class="ctrl">
+    <button class="btn go" id="next" type="button">Reveal answer</button>
+    <button class="btn" id="pause" type="button">Pause timer</button>
+    <button class="btn" id="back" type="button">Previous text</button>
+    <button class="btn" id="full" type="button">Full screen</button>
+    <button class="btn" id="restart" type="button">New game</button>
+    <span class="keys"><kbd>Enter</kbd> reveal / next · <kbd>Space</kbd> timer · <kbd>1</kbd>–<kbd>6</kbd> award villas</span>
+  </nav>
+</div>
+
+<div class="overlay" id="setup">
+  <div class="card">
+    <h1>Isocost <span>Island</span></h1>
+    <p>Every villa wants the same thing: the cheapest way to make Q̄. Split the room into villas. Each text goes to everyone at once.</p>
+    <dl class="rules">
+      <dt>Text</dt><dd>A question lands. Villas huddle until the timer runs out.</dd>
+      <dt>Answer</dt><dd>On "Show me", each villa holds up 1–4 fingers.</dd>
+      <dt>Points</dt><dd>Reveal, then tap every villa that got it right. Casa Amor texts are worth double.</dd>
+      <dt>Recoupling</dt><dd>Top villa wins the island. Last place gets dumped.</dd>
+    </dl>
+    <div class="setrow">
+      <label for="nteams">Villas<select id="nteams"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+      <label for="tsec">Timer<select id="tsec"><option value="20">20 sec</option><option value="25" selected>25 sec</option><option value="30">30 sec</option><option value="45">45 sec</option></select></label>
+    </div>
+    <div class="names" id="names"></div>
+    <div class="ctrl"><button class="btn go" id="start" type="button">Enter the villa</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="casa" hidden><div class="big">Casa Amor<small>This text is worth double</small></div></div>
+
+<div class="overlay" id="end" hidden>
+  <div class="card">
+    <h1>The <span>recoupling</span></h1>
+    <div class="podium" id="podium"></div>
+    <p>Takeaways: minimize cost where the isoquant is tangent to the isocost line, so MP<sub>K</sub>/r = MP<sub>L</sub>/w. Solve that with the output constraint for L* and K*, then plug them into TC = wL + rK.</p>
+    <div class="ctrl"><button class="btn go" id="again" type="button">Play again</button></div>
+  </div>
+</div>
+
+<script>
+const F = s => `<span class="fx">${s}</span>`;
+const DEFAULT_NAMES = ["Fire Pit","Hideaway","Day Beds","Terrace","Pool Deck","Kitchen"];
+
+// c = index of correct answer (0-based). casa = double points.
+const QS = [
+ {q:`The cost-minimization problem asks a firm to…`,
+  a:["Produce as much output as possible","Find the cheapest input mix that makes a given Q̄","Choose how much Q to produce","Set the price of its output"], c:1,
+  e:`Q̄ is fixed for now. The firm picks the mix of L and K that hits Q̄ at the lowest cost. Choosing Q comes in a later lecture.`},
+ {q:`An isocost line shows every combination of L and K that…`,
+  a:["Produces the same output","Has the same marginal product","Has the same total cost","Uses the same amount of labor"], c:2,
+  e:`Same total cost, TC = wL + rK. It's the producer's version of the consumer's budget line. Same output is an isoquant.`},
+ {q:`Moving northeast across the isocost lines (more L and more K), total cost…`,
+  a:["Rises","Falls","Stays the same","Depends on the isoquant"], c:0,
+  e:`Each line farther from the origin uses more of both inputs, so it represents a higher TC.`},
+ {q:`w = $20 and r = $10. With K on the vertical axis, the isocost line's slope is…`,
+  a:["−1/2","2","−30","−2"], c:3,
+  e:`Slope = −w/r = −20/10 = −2. Give up one hour of labor and you can afford two units of capital.`},
+ {q:`Where does the cost-minimizing bundle sit?`,
+  a:["Where the isoquant crosses the isocost line twice","Where the isoquant is tangent to the isocost line","On the highest isocost line","At the origin"], c:1,
+  e:`At the tangency, the firm reaches the isoquant on the lowest isocost line it can.`},
+ {q:`Your bundle is on the isoquant, but the isoquant <i>crosses</i> your isocost line instead of being tangent to it. What's the ick?`,
+  a:["You can't make Q̄","Nothing, it's already optimal","You could swap inputs and make Q̄ for less","You need more of both inputs"], c:2,
+  e:`If they cross, there's a lower isocost line that still touches the isoquant. Trade one input for the other and costs fall.`},
+ {q:`The cost-minimizing optimality condition is…`,
+  a:[F("MP<sub>K</sub>/r = MP<sub>L</sub>/w"),F("MP<sub>K</sub> = MP<sub>L</sub>"),F("r/MP<sub>L</sub> = w/MP<sub>K</sub>"),F("wL = rK")], c:0,
+  e:`Marginal product per dollar is equal across inputs, the same idea as MU per dollar in consumer choice.`},
+ {casa:true, q:`You're making Q̄ and ${F("MP<sub>K</sub>/r &gt; MP<sub>L</sub>/w")}. How do you cut costs?`,
+  a:["Spend $1 more on labor, $1 less on capital","Spend $1 less on labor and less than $1 more on capital","Cut both inputs","Nothing; you're at the optimum"], c:1,
+  e:`Capital gives more output per dollar. Shift a dollar away from labor; you need less than a dollar of capital to replace that output.`},
+ {q:`MP<sub>L</sub> = 10 and w = $5. MP<sub>K</sub> = 30 and r = $10. The firm should use…`,
+  a:["More labor, less capital","The same mix; it's optimal","More of both","More capital, less labor"], c:3,
+  e:`MP<sub>L</sub>/w = 10/5 = 2. MP<sub>K</sub>/r = 30/10 = 3. Capital gives more per dollar, so shift toward capital.`},
+ {q:`In ${F("ℒ = rK + wL + λ(Q̄ − Q(K, L))")}, setting ${F("∂ℒ/∂λ = 0")} gives…`,
+  a:[F("r = λMP<sub>K</sub>"),F("w = λMP<sub>L</sub>"),F("Q̄ = Q(K, L)"),F("λ = 0")], c:2,
+  e:`The λ condition just returns the constraint: you still have to make Q̄. Dividing the other two gives the optimality condition.`},
+ {q:`${F("Q = 50√(LK)")}, w = $5, r = $20, Q̄ = 1,000. Optimality gives L = 4K and the quota gives LK = 400. So (L*, K*) =`,
+  a:["(40, 10)","(10, 40)","(20, 20)","(80, 5)"], c:0,
+  e:`Plug L = 4K into LK = 400: 4K² = 400, so K* = 10 and L* = 40.`},
+ {q:`${F("L*(w, r, Q̄) = (Q̄/50)√(r/w)")} is called a <i>conditional</i> demand. Conditional on what?`,
+  a:["The consumer's income","The price of the output","The firm's profit","The output level Q̄"], c:3,
+  e:`It's the cost-minimizing labor demand for a given output level Q̄, w and r.`},
+ {q:`Using ${F("L* = (Q̄/50)√(r/w)")}, what happens to L* when the wage w rises?`,
+  a:["Falls","Rises","No change","Depends on Q̄"], c:0,
+  e:`w is in the denominator, so L* falls. Labor got pricier, so the firm uses relatively less of it.`},
+ {casa:true, q:`${F("TC = (Q̄/25)√(rw)")}. With Q̄ = 1,000, w = $5, r = $20, total cost is…`,
+  a:["$200","$400","$1,000","$4,000"], c:1,
+  e:`(1000/25)·√100 = 40·10 = $400. Check: wL* + rK* = 5·40 + 20·10 = 200 + 200 = $400.`}
+];
+
+let S=null, timer=null;
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function buildNameInputs(){
+  const n=+$("nteams").value, box=$("names"), prev=[...box.querySelectorAll("input")].map(i=>i.value);
+  box.innerHTML="";
+  for(let i=0;i<n;i++){
+    const inp=document.createElement("input"); inp.id="villa"+i; inp.maxLength=18;
+    inp.value=prev[i]||DEFAULT_NAMES[i]; inp.setAttribute("aria-label",`Villa ${i+1} name`);
+    box.appendChild(inp);
+  }
+}
+
+function fresh(names,secs){
+  return {names, score:names.map(()=>0), qi:0, phase:"question", clock:secs, secs, paused:false,
+          award:QS.map(()=>names.map(()=>false))};
+}
+function pts(i){return QS[i].casa?200:100}
+
+function recompute(){
+  S.score=S.names.map((_,t)=>QS.reduce((s,_,i)=>s+(S.award[i][t]?pts(i):0),0));
+}
+
+function startClock(){
+  stopClock();
+  timer=setInterval(()=>{
+    if(S.phase!=="question"||S.paused)return;
+    S.clock=Math.max(0,S.clock-1);
+    if(S.clock===0){stopClock();chime([660,880],.18);}
+    renderClock();
+  },1000);
+}
+function stopClock(){if(timer){clearInterval(timer);timer=null}}
+
+function renderClock(){
+  const r=$("ring");
+  if(S.phase==="question"){
+    $("secs").textContent=S.clock===0?"Show":S.clock;
+    r.style.setProperty("--p",S.clock/S.secs);
+    r.classList.toggle("low",S.clock<=5);
+    $("secs").style.fontSize=S.clock===0?"16px":"";
+  } else { $("secs").textContent="✓"; $("secs").style.fontSize=""; r.style.setProperty("--p",0); r.classList.remove("low"); }
+  $("pause").textContent=S.paused?"Resume timer":"Pause timer";
+}
+
+function renderBoard(){
+  const max=Math.max(100,...S.score), top=Math.max(...S.score);
+  $("rows").innerHTML=S.names.map((n,i)=>`
+    <div class="row${S.score[i]===top&&top>0?" lead":""}">
+      <span class="nm">${esc(n)}</span><span class="pts">${S.score[i]}</span>
+      <span class="bar"><i style="width:${(S.score[i]/max)*100}%"></i></span>
+    </div>`).join("");
+}
+
+function renderQ(animate){
+  const q=QS[S.qi];
+  $("ep").textContent=`Text ${S.qi+1} of ${QS.length}`;
+  const b=$("badge"); b.textContent=q.casa?"Casa Amor · 200 pts":"100 pts"; b.classList.toggle("casa",!!q.casa);
+  $("q").innerHTML=q.q;
+  const bub=$("bubble"); if(animate){bub.classList.remove("in"); void bub.offsetWidth; bub.classList.add("in");}
+  const rev=S.phase==="reveal";
+  $("answers").innerHTML=q.a.map((t,i)=>`<div class="ans c${i+1}${rev&&i===q.c?" right":""}"><span class="k">${i+1}</span><span class="t">${t}</span>${rev&&i===q.c?'<span class="tick">✓</span>':""}</div>`).join("");
+  $("main").classList.toggle("revealed",rev);
+  $("after").hidden=!rev;
+  if(rev){
+    $("why").innerHTML=`<span class="h">Producer's note</span>${q.e}`;
+    $("chips").innerHTML=S.names.map((n,t)=>`<button type="button" class="chip" id="chip${t}" aria-pressed="${S.award[S.qi][t]}"><span class="n">${t+1}</span>${esc(n)}</button>`).join("");
+    S.names.forEach((_,t)=>$("chip"+t).addEventListener("click",()=>toggle(t)));
+  }
+  $("next").textContent=S.phase==="question"?"Reveal answer":(S.qi>=QS.length-1?"Go to recoupling":"Next text");
+  $("back").disabled=S.qi===0;
+}
+
+function render(animate){renderQ(animate);renderBoard();renderClock()}
+
+function toggle(t){
+  if(S.phase!=="reveal"||t>=S.names.length)return;
+  S.award[S.qi][t]=!S.award[S.qi][t];
+  if(S.award[S.qi][t])chime([784],.12);
+  recompute(); render(false);
+}
+
+function next(){
+  if(S.phase==="question"){S.phase="reveal";stopClock();render(false);return}
+  if(S.qi>=QS.length-1){endGame();return}
+  S.qi++; S.phase="question"; S.clock=S.secs; S.paused=false;
+  render(true);
+  if(QS[S.qi].casa){showCasa()} else startClock();
+}
+function back(){
+  if(S.qi===0)return;
+  S.qi--; S.phase="reveal"; stopClock(); render(true);
+}
+function showCasa(){
+  $("casa").hidden=false; chime([523,659,784,1047],.14);
+  setTimeout(()=>{$("casa").hidden=true; startClock();},2000);
+}
+
+function endGame(){
+  stopClock();
+  const order=S.names.map((n,i)=>({n,s:S.score[i]})).sort((a,b)=>b.s-a.s);
+  const top=order[0].s, bottom=order[order.length-1].s;
+  $("podium").innerHTML=order.map((o,i)=>{
+    const win=o.s===top, dump=o.s===bottom&&top!==bottom;
+    return `<div class="pod${win?" win":""}${dump?" dumped":""}"><span class="pl">${i+1}</span><span>${esc(o.n)}</span><span><span class="st">${win?"Won the island · ":dump?"Dumped · ":""}</span>${o.s}</span></div>`;
+  }).join("");
+  $("end").hidden=false; chime([523,659,784],.2);
+}
+
+function start(){
+  const n=+$("nteams").value, secs=+$("tsec").value;
+  const names=[...Array(n)].map((_,i)=>($("villa"+i).value.trim()||DEFAULT_NAMES[i]));
+  S=fresh(names,secs);
+  $("setup").hidden=true; $("end").hidden=true;
+  render(true); startClock();
+}
+
+let actx=null;
+function chime(freqs,dur){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    freqs.forEach((f,i)=>{
+      const o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime+i*dur*.8;
+      o.type="triangle";o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+dur*1.6);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+dur*1.7);
+    });
+  }catch(e){}
+}
+
+$("nteams").addEventListener("change",buildNameInputs);
+$("start").addEventListener("click",start);
+$("next").addEventListener("click",next);
+$("back").addEventListener("click",back);
+$("pause").addEventListener("click",()=>{S.paused=!S.paused;renderClock()});
+$("again").addEventListener("click",()=>{$("end").hidden=true;$("setup").hidden=false});
+$("restart").addEventListener("click",()=>{stopClock();$("setup").hidden=false});
+$("full").addEventListener("click",()=>{
+  if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{})}
+  else{document.documentElement.requestFullscreen?.().catch(()=>{})}
+});
+document.addEventListener("keydown",e=>{
+  if(!$("setup").hidden){ if(e.key==="Enter"&&e.target.tagName!=="SELECT"){e.preventDefault();start();} return; }
+  if(!$("end").hidden||!$("casa").hidden||!S)return;
+  if(e.key==="Enter"){e.preventDefault();next()}
+  else if(e.key===" "){e.preventDefault();if(S.phase==="question"){S.paused=!S.paused;renderClock()}}
+  else if(/^[1-6]$/.test(e.key)){toggle(+e.key-1)}
+});
+
+// Preview state behind the setup card
+buildNameInputs();
+S=fresh(DEFAULT_NAMES.slice(0,4),25);
+render(false);
+</script>
+
+</body>
+</html>
