@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Midterm 2 Jeopardy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Public+Sans:wght@400;600;800&display=swap">
+<style>
+/* Layout: a game-show board in black and gold for the projector. 5 categories x 5 clues, team scores along the bottom; a clue opens full screen. Single dark look on purpose. */
+:root{
+  --ink:#0c0c0c;
+  --panel:#171615;
+  --tile:#1d1b18;
+  --line:#34302a;
+  --gold:#cfb87c;
+  --gold-hi:#e7d39c;
+  --chalk:#f5f1e8;
+  --muted:#a59e8f;
+  --good:#58d68d; --bad:#ff6b6b;
+  --f-display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --f-body:"Public Sans","Segoe UI",Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%;overflow-x:hidden}
+body{margin:0;padding-inline:16px;background:var(--ink);color:var(--chalk);font-family:var(--f-body);position:relative}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.fx{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-style:italic;font-weight:500}
+
+.app{max-width:1500px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:12px;padding-block:12px}
+.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.logo{font-family:var(--f-display);font-weight:400;font-size:clamp(22px,2.4vw,34px);margin:0;letter-spacing:.01em}
+.logo span{color:var(--gold)}
+.sub{font-size:14px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.picker{margin-left:auto;font-size:clamp(14px,1.3vw,18px);color:var(--muted)}
+.picker b{color:var(--gold)}
+
+/* Board */
+.board{flex:1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:auto repeat(5,minmax(52px,1fr));gap:8px;min-height:0}
+.cat{background:var(--panel);border-bottom:3px solid var(--gold);border-radius:6px 6px 2px 2px;display:grid;place-items:center;text-align:center;padding:10px 6px;font-family:var(--f-display);font-weight:400;font-size:clamp(13px,1.45vw,21px);text-transform:uppercase;letter-spacing:.02em;line-height:1.1;color:var(--gold-hi)}
+.cat small{display:block;font-family:var(--f-body);font-weight:600;font-size:clamp(10px,.85vw,13px);letter-spacing:.04em;color:var(--muted);text-transform:none;margin-top:4px}
+.tile{border:1px solid var(--line);background:var(--tile);border-radius:4px;font-family:var(--f-display);font-weight:400;font-size:clamp(22px,3.2vw,48px);color:var(--gold);transition:transform .12s,border-color .12s,background .12s;font-variant-numeric:tabular-nums}
+.tile:hover:not([disabled]){border-color:var(--gold);transform:translateY(-2px);background:#24211c}
+.tile[disabled]{cursor:default;color:transparent;background:#121110;border-style:dashed}
+.tile[disabled] .done{color:var(--muted);font-family:var(--f-body);font-weight:600;font-size:clamp(10px,.9vw,13px);display:block;letter-spacing:.04em}
+
+/* Teams */
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.team{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 8px;text-align:left}
+.team.pick{border-color:var(--gold);box-shadow:inset 0 -3px 0 var(--gold)}
+.team .nm{font-weight:800;font-size:clamp(14px,1.3vw,18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team .sc{font-family:var(--f-display);font-weight:400;font-size:clamp(20px,2.2vw,32px);font-variant-numeric:tabular-nums;grid-row:span 2}
+.team .sc.neg{color:var(--bad)}
+.team .adj{display:flex;gap:4px}
+.team .adj button{border:1px solid var(--line);background:transparent;border-radius:4px;font-size:11px;padding:0 6px;color:var(--muted);line-height:1.6}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:9px 16px;font-weight:600;font-size:15px}
+.btn:hover{border-color:var(--muted)}
+.btn.go{background:var(--gold);border-color:var(--gold);color:#1a1405;font-weight:800;font-size:17px;padding:9px 22px}
+.keys{margin-left:auto;font-size:13px;color:var(--muted)}
+kbd{font-family:var(--f-body);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--chalk)}
+
+/* Clue screen */
+.clue{position:fixed;inset:0;z-index:4;background:var(--ink);overflow:auto;padding:16px}
+.clue-in{max-width:1300px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:16px}
+.cluehead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.cluehead .c{font-family:var(--f-display);font-weight:400;text-transform:uppercase;color:var(--gold-hi);font-size:clamp(16px,1.6vw,22px)}
+.cluehead .v{font-family:var(--f-display);font-weight:400;font-size:clamp(16px,1.6vw,22px);background:var(--gold);color:#1a1405;padding:2px 12px;border-radius:4px}
+.cluehead .dd{background:var(--bad);color:#fff}
+.ring{--p:1;margin-left:auto;width:clamp(58px,5.4vw,80px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--gold) calc(var(--p)*360deg), var(--line) 0);position:relative}
+.ring::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--ink)}
+.ring b{position:relative;font-family:var(--f-display);font-weight:400;font-size:clamp(16px,1.8vw,24px);font-variant-numeric:tabular-nums}
+.ring.low{background:conic-gradient(var(--bad) calc(var(--p)*360deg), var(--line) 0)}
+.qtext{flex:1;display:grid;place-items:center;text-align:center;padding:clamp(12px,3vh,40px) clamp(0px,3vw,60px)}
+.qtext p{margin:0;font-size:clamp(24px,3.3vw,52px);font-weight:800;line-height:1.25;text-wrap:balance;max-width:30ch;overflow-wrap:break-word}
+.ans{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--gold);border-radius:8px;padding:14px 20px;display:flex;flex-direction:column;gap:6px}
+.ans .a{font-size:clamp(22px,2.6vw,38px);font-weight:800;color:var(--gold-hi);line-height:1.2;overflow-wrap:break-word}
+.ans .w{font-size:clamp(15px,1.5vw,21px);line-height:1.45;color:#ddd6c8;overflow-wrap:break-word}
+.lbl{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:800}
+.marks{display:flex;flex-wrap:wrap;gap:8px}
+.mark{border:2px solid var(--line);background:transparent;border-radius:99px;padding:7px 14px;font-weight:800;font-size:16px}
+.mark .n{opacity:.55;font-size:13px;margin-right:4px}
+.mark.ok{background:var(--good);border-color:var(--good);color:#06240f}
+.mark.no{background:var(--bad);border-color:var(--bad);color:#2b0606}
+.wager{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.wager label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.wager input{font:inherit;font-size:20px;font-weight:800;width:140px;background:var(--panel);color:var(--chalk);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+
+/* Splash + setup + end */
+.overlay{position:fixed;inset:0;background:rgba(8,8,8,.95);display:grid;place-items:center;padding:16px;z-index:6;overflow:auto}
+#setup{position:absolute;inset:0 0 auto 0;min-height:100%;overflow:visible}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:clamp(20px,3vw,40px);max-width:820px;width:100%;display:flex;flex-direction:column;gap:16px}
+.card h1{font-family:var(--f-display);font-weight:400;font-size:clamp(36px,5.6vw,72px);line-height:.95;margin:0;text-wrap:balance}
+.card h1 span{color:var(--gold)}
+.card p{margin:0;font-size:17px;line-height:1.5;color:#e5dfd2}
+.rules{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:16px;line-height:1.4;margin:0}
+.rules dt{font-weight:800;color:var(--gold)}
+.rules dd{margin:0;color:#e5dfd2}
+.setrow{display:flex;gap:14px;flex-wrap:wrap;align-items:end}
+.setrow label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.setrow select{font:inherit;font-size:16px;background:var(--ink);color:var(--chalk);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+.check{flex-direction:row!important;align-items:center;gap:8px!important;font-size:15px!important;text-transform:none!important;letter-spacing:0!important;color:var(--chalk)!important;font-weight:600!important}
+.check input{width:18px;height:18px;accent-color:var(--gold)}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.names input{font:inherit;font-size:16px;font-weight:600;background:var(--ink);color:var(--chalk);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0;width:100%}
+.big{font-family:var(--f-display);font-weight:400;font-size:clamp(56px,11vw,170px);line-height:.9;text-align:center;color:var(--gold)}
+.big small{display:block;font-family:var(--f-body);font-weight:800;font-size:.17em;color:var(--chalk);letter-spacing:.08em;margin-top:.7em;text-transform:uppercase}
+@media (prefers-reduced-motion:no-preference){.big{animation:pop .5s cubic-bezier(.2,1.5,.4,1)}}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.pod{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 14px;border-radius:8px;background:var(--ink);font-size:20px;font-weight:800}
+.pod .pl{font-family:var(--f-display);font-weight:400;color:var(--gold)}
+.pod.win{background:var(--gold);color:#1a1405}
+.pod.win .pl{color:#1a1405}
+.podium{display:flex;flex-direction:column;gap:8px}
+
+@media (max-width:760px){
+  .board{gap:4px;grid-template-rows:auto repeat(5,minmax(44px,1fr))}
+  .cat{padding:6px 2px;font-size:10px}
+  .cat small{display:none}
+  .tile{font-size:16px}
+  .keys{display:none}
+  .overlay{padding:10px}
+  .card{padding:18px;gap:14px}
+  .card h1{font-size:clamp(30px,10vw,52px)}
+  .team .adj{display:none}
+}
+</style>
+</head>
+<body>
+<noscript><div style="position:fixed;inset:0;z-index:99;background:#0c0c0c;color:#f5f1e8;display:grid;place-items:center;padding:24px;font:20px/1.5 Arial,sans-serif;text-align:center"><div><b style="color:#cfb87c;font-size:28px">This preview has scripts turned off.</b><br>Download the file, then double-click it to open it in Chrome, Safari, Edge or Firefox.</div></div></noscript>
+
+
+<div class="app">
+  <header class="top">
+    <h1 class="logo">Midterm 2 <span>Jeopardy</span></h1>
+    <span class="sub">ECON 3070 · Lectures 6–8</span>
+    <span class="picker" id="picker"><b>Team</b> picks next</span>
+  </header>
+  <section class="board" id="board" aria-label="Game board"></section>
+  <section class="teams" id="teams" aria-label="Scores"></section>
+  <nav class="ctrl">
+    <button class="btn go" id="finalBtn" type="button">Final Jeopardy</button>
+    <button class="btn" id="full" type="button">Full screen</button>
+    <button class="btn" id="restart" type="button">New game</button>
+    <span class="keys">Click a team to make it the picker · <kbd>Enter</kbd> show answer / back · <kbd>Space</kbd> timer · <kbd>1</kbd>–<kbd>6</kbd> mark teams</span>
+  </nav>
+</div>
+
+<section class="clue" id="clue" hidden aria-live="polite">
+  <div class="clue-in">
+    <div class="cluehead">
+      <span class="c" id="cCat">Category</span><span class="v" id="cVal">200</span>
+      <div class="ring" id="ring"><b id="secs">30</b></div>
+    </div>
+    <div class="wager" id="ddWager" hidden>
+      <label for="ddInput"><span id="ddWho">Team</span>'s wager<input id="ddInput" type="number" min="0" step="100" inputmode="numeric"></label>
+      <span style="color:var(--muted);font-size:15px" id="ddMax">Up to 1000</span>
+      <button class="btn go" id="ddGo" type="button">Lock wager &amp; show clue</button>
+    </div>
+    <div class="wager" id="finWager" hidden></div>
+    <div class="qtext" id="qtext"><p id="cQ"></p></div>
+    <div class="ans" id="cAns" hidden>
+      <span class="lbl">Answer</span>
+      <div class="a" id="cA"></div>
+      <div class="w" id="cW"></div>
+    </div>
+    <div id="markBox" hidden>
+      <span class="lbl" id="markLbl">Tap once for right, twice for wrong</span>
+      <div class="marks" id="marks" style="margin-top:8px"></div>
+    </div>
+    <div class="ctrl">
+      <button class="btn go" id="cNext" type="button">Show answer</button>
+      <button class="btn" id="cPause" type="button">Pause timer</button>
+      <button class="btn" id="cCancel" type="button">Back to board without scoring</button>
+    </div>
+  </div>
+</section>
+
+<div class="overlay" id="setup">
+  <div class="card">
+    <h1>Midterm 2 <span>Jeopardy</span></h1>
+    <p>Review for Lectures 6–8: production, returns to scale, cost minimization, cost curves, and the short run. Every team works every clue on paper.</p>
+    <dl class="rules">
+      <dt>Pick</dt><dd>Teams take turns choosing a clue. Everyone works it while the timer runs.</dd>
+      <dt>Answer</dt><dd>When time's up, teams hold up their answers. Show the answer and mark each team.</dd>
+      <dt>Daily Doubles</dt><dd>Two clues are hidden Daily Doubles. Only the picking team answers, and they bet first.</dd>
+      <dt>Final</dt><dd>Every team bets up to its score on one last clue.</dd>
+    </dl>
+    <div class="setrow">
+      <label for="nteams">Teams<select id="nteams"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+      <label for="pace">Clue timers<select id="pace"><option value="0.75">Short</option><option value="1" selected>Standard</option><option value="1.5">Long</option></select></label>
+      <label class="check" for="penalty"><input type="checkbox" id="penalty">Wrong answers lose points</label>
+    </div>
+    <div class="names" id="names"></div>
+    <div class="ctrl"><button class="btn go" id="start" type="button">Start the game</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="splash" hidden><div class="big" id="splashText">Daily Double</div></div>
+
+<div class="overlay" id="end" hidden>
+  <div class="card">
+    <h1>Final <span>scores</span></h1>
+    <div class="podium" id="podium"></div>
+    <p>Good luck on Wednesday. Before the exam, practice: deriving conditional demands and TC, checking returns to scale, finding where AC is minimized, and comparing short-run and long-run cost.</p>
+    <div class="ctrl"><button class="btn go" id="backBoard" type="button">Back to the board</button><button class="btn" id="again" type="button">New game</button></div>
+  </div>
+</div>
+
+<script>
+const F = s => `<span class="fx">${s}</span>`;
+const DEFAULT_NAMES = ["Team 1","Team 2","Team 3","Team 4","Team 5","Team 6"];
+const VALUES = [200,400,600,800,1000];
+const BASE_SECS = {200:30,400:45,600:60,800:90,1000:120};
+
+const CATS = [
+ {name:"Making It", sub:"Production", clues:[
+  {q:`10 workers make 50 units. Hiring an 11th worker raises output to 58. What is the marginal product of the 11th worker?`,
+   a:`8 units`, w:`${F("MP<sub>L</sub> = ΔQ/ΔL = (58 − 50)/1 = 8")}. For comparison, ${F("AP<sub>L</sub>")} at L = 11 is 58/11 ≈ 5.3.`},
+  {q:`${F("Q = 8L<sup>1/2</sup>K<sup>1/2</sup>")}. Holding K fixed, is ${F("MP<sub>L</sub>")} increasing, constant, or diminishing in L?`,
+   a:`Diminishing`, w:`${F("MP<sub>L</sub> = 4L<sup>−1/2</sup>K<sup>1/2</sup>")}, and ${F("∂MP<sub>L</sub>/∂L = −2L<sup>−3/2</sup>K<sup>1/2</sup> &lt; 0")}.`},
+  {q:`${F("Q = L<sup>2</sup>K")}. What is ${F("MRTS<sub>L,K</sub>")}?`,
+   a:F("MRTS<sub>L,K</sub> = 2K/L"), w:`${F("MP<sub>L</sub> = 2LK")} and ${F("MP<sub>K</sub> = L<sup>2</sup>")}, so ${F("MRTS = 2LK / L<sup>2</sup> = 2K/L")}.`},
+  {q:`Every pizza needs exactly 1 crust (C) and 3 cups of cheese (S), with no substitutions. Write the production function.`,
+   a:F("Q = min{C, S/3}"), w:`Fixed proportions (perfect complements). The isoquants are L-shaped, with kinks where S = 3C.`},
+  {q:`(a) What does the elasticity of substitution σ measure? (b) For the pizza technology ${F("Q = min{C, S/3}")}, is σ zero or large?`,
+   a:`(a) %Δ in the input ratio ÷ %Δ in MRTS (b) σ = 0`, w:`σ tells you how easily the firm can swap one input for another. With fixed proportions there's no room to substitute, so σ = 0.`}
+ ]},
+ {name:"To Scale", sub:"Returns & tech progress", clues:[
+  {q:`${F("Q = K<sup>0.3</sup>L<sup>0.5</sup>")}. Increasing, constant, or decreasing returns to scale?`,
+   a:`Decreasing`, w:`${F("Q(φK, φL) = φ<sup>0.8</sup>Q")}. Since 0.8 &lt; 1, output grows less than proportionally.`},
+  {q:`${F("Q = √(LK) + L")}. Increasing, constant, or decreasing returns to scale?`,
+   a:`Constant`, w:`${F("√(φL·φK) + φL = φ(√(LK) + L) = φQ")}. Every term scales by exactly φ.`},
+  {dd:true, q:`${F("Q = L<sup>0.6</sup>K<sup>0.6</sup>")}. (a) Is ${F("MP<sub>L</sub>")} diminishing? (b) What are the returns to scale?`,
+   a:`(a) Yes (b) Increasing`, w:`${F("MP<sub>L</sub> = 0.6L<sup>−0.4</sup>K<sup>0.6</sup>")} falls as L rises, but ${F("Q(φL, φK) = φ<sup>1.2</sup>Q")}. Diminishing marginal returns and increasing returns to scale can happen together.`},
+  {q:`${F("Q = 4L<sup>1/2</sup>K<sup>1/2</sup>")} becomes ${F("Q = 4LK<sup>1/2</sup>")}. Neutral, labor-saving, or capital-saving progress?`,
+   a:`Capital-saving (labor-biased)`, w:`Before: ${F("MRTS<sub>L,K</sub> = K/L")}. After: ${F("MP<sub>L</sub> = 4K<sup>1/2</sup>")}, ${F("MP<sub>K</sub> = 2LK<sup>−1/2</sup>")}, so ${F("MRTS = 2K/L")}. MRTS rose, so labor became relatively more productive.`},
+  {q:`${F("Q = L<sup>a</sup>K<sup>1/3</sup>")}. (a) What value of a gives constant returns to scale? (b) With that a, is ${F("MP<sub>L</sub>")} diminishing?`,
+   a:`(a) a = 2/3 (b) Yes`, w:`The exponents must sum to 1: a + 1/3 = 1. Then ${F("MP<sub>L</sub> = (2/3)L<sup>−1/3</sup>K<sup>1/3</sup>")}, which falls as L rises.`}
+ ]},
+ {name:"Penny Pinchers", sub:"Cost minimization", clues:[
+  {q:`At an interior cost-minimizing bundle, ${F("MP<sub>L</sub>/w")} must equal what?`,
+   a:F("MP<sub>K</sub>/r"), w:`Marginal product per dollar is equal across inputs. Equivalently, ${F("MRTS<sub>L,K</sub> = w/r")}: the isoquant is tangent to the isocost line.`},
+  {q:`${F("MP<sub>L</sub> = 12")}, w = $4, ${F("MP<sub>K</sub> = 20")}, r = $10. To make the same Q̄ for less, shift toward which input?`,
+   a:`Labor`, w:`${F("MP<sub>L</sub>/w = 3")} and ${F("MP<sub>K</sub>/r = 2")}. Labor gives more output per dollar.`},
+  {q:`${F("Q = 3L + K")}, w = $6, r = $1, Q̄ = 30. Find L*, K*, and total cost.`,
+   a:`L* = 0, K* = 30, TC = $30`, w:`${F("MP<sub>L</sub>/w = 3/6 = 0.5")} and ${F("MP<sub>K</sub>/r = 1/1 = 1")}. Capital always wins, so it's a corner solution with all capital: K = 30.`},
+  {q:`${F("Q = min{L, 2K}")}, w = $3, r = $4, Q̄ = 20. Find L*, K*, and total cost.`,
+   a:`L* = 20, K* = 10, TC = $100`, w:`Don't waste anything: L = 2K = 20, so K = 10. TC = 3(20) + 4(10) = 60 + 40 = $100.`},
+  {dd:true, q:`${F("Q = L<sup>1/2</sup>K<sup>1/2</sup>")}, w = $9, r = $1, Q̄ = 30. Find L*, K*, and total cost.`,
+   a:`L* = 10, K* = 90, TC = $180`, w:`Optimality: ${F("K/L = w/r = 9")}, so K = 9L. Then ${F("30 = √(9L<sup>2</sup>) = 3L")}, so L* = 10 and K* = 90. TC = 9(10) + 1(90) = $180.`}
+ ]},
+ {name:"Curve Appeal", sub:"Cost curves", clues:[
+  {q:`${F("TC(Q) = 50 + 4Q")}. Find AC(Q) and MC(Q).`,
+   a:`AC = 50/Q + 4, MC = 4`, w:`AC = TC/Q. MC = dTC/dQ.`},
+  {q:`Average cost is falling as output rises. Is MC above or below AC?`,
+   a:`Below`, w:`Units that cost less than the average pull the average down.`},
+  {q:`One firm making soda and juice: ${F("TC = 40 + 2Q<sub>1</sub> + 3Q<sub>2</sub>")}. Two separate firms: ${F("40 + 2Q<sub>1</sub>")} and ${F("40 + 3Q<sub>2</sub>")}. Economies or diseconomies of scope?`,
+   a:`Economies of scope`, w:`Together: ${F("40 + 2Q<sub>1</sub> + 3Q<sub>2</sub>")}. Apart: ${F("80 + 2Q<sub>1</sub> + 3Q<sub>2</sub>")}. Sharing the fixed cost makes making both together cheaper.`},
+  {q:`${F("Q = L<sup>2</sup>")}, labor is the only input, and w = $10. Find TC(Q). Economies or diseconomies of scale?`,
+   a:`TC = 10√Q; economies of scale`, w:`${F("L = √Q")}, so ${F("TC = 10√Q")} and ${F("AC = 10/√Q")}, which falls as Q rises.`},
+  {q:`${F("TC(Q) = 2Q<sup>2</sup> + 32")}. At what Q is average cost minimized, and what is AC there?`,
+   a:`Q = 4, AC = $16`, w:`${F("AC = 2Q + 32/Q")} and ${F("MC = 4Q")}. AC bottoms out where MC = AC: ${F("4Q = 2Q + 32/Q")}, so ${F("Q<sup>2</sup> = 16")} and Q = 4. AC = 8 + 8 = $16.`}
+ ]},
+ {name:"Short & Sweet", sub:"Short run vs. long run", clues:[
+  {q:`In our short-run model, which input is fixed?`,
+   a:`Capital (K̄)`, w:`Labor can adjust, but capital is stuck at K̄, like a building on a lease.`},
+  {q:`Fill in ≥ or ≤: SRTC(Q) ___ LRTC(Q).`,
+   a:`≥`, w:`Any bundle available in the short run is also available in the long run, so the long run can never cost more.`},
+  {q:`${F("STC(Q) = 200 + 3Q<sup>2</sup>")}. What are TFC and AVC(Q)?`,
+   a:`TFC = 200, AVC = 3Q`, w:`${F("TVC = 3Q<sup>2</sup>")}, so ${F("AVC = TVC/Q = 3Q")}. Fixed cost doesn't change with Q.`},
+  {q:`${F("Q = L<sup>1/3</sup>K<sup>2/3</sup>")} with capital fixed at K̄ = 8, w = $1, r = $2. Find short-run labor demand L(Q) and STC(Q).`,
+   a:`L = Q³/64; STC = 16 + Q³/64`, w:`${F("K̄<sup>2/3</sup> = 4")}, so ${F("Q = 4L<sup>1/3</sup>")} and ${F("L = (Q/4)<sup>3</sup> = Q<sup>3</sup>/64")}. STC = rK̄ + wL = 2(8) + Q³/64.`},
+  {q:`${F("Q = L<sup>1/2</sup>K<sup>1/2</sup>")}, w = r = $4, Q̄ = 10. (a) Long-run total cost? (b) Short-run total cost if capital is stuck at K̄ = 20?`,
+   a:`(a) $80 (b) $100`, w:`Long run: w = r, so K = L = 10 and TC = 40 + 40 = $80. Short run: ${F("10 = √(20L)")}, so L = 5 and STC = 4(5) + 4(20) = $100. Too much capital makes the short run more expensive.`}
+ ]}
+];
+
+const FINAL = {cat:"Envelope, Please", q:`At Q = 100, a firm's short-run average cost with its current capital is $12. Its long-run average cost at Q = 100 is $10. (a) Is the firm's current capital the cost-minimizing amount for 100 units? (b) Could SAC ever be <i>below</i> LRAC at some output?`,
+  a:`(a) No (b) No, SAC ≥ LRAC everywhere`, w:`LRAC is the lower envelope of all the SAC curves. SAC equals LRAC only at the output where K̄ is exactly the right amount of capital. Here $12 &gt; $10, so K̄ isn't optimal for 100 units.`};
+
+let S=null, timer=null;
+const $=id=>document.getElementById(id);
+function nb(s){return s.replace(/ = /g,'\u00a0=\u00a0')}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function buildNameInputs(){
+  const n=+$("nteams").value, box=$("names"), prev=[...box.querySelectorAll("input")].map(i=>i.value);
+  box.innerHTML="";
+  for(let i=0;i<n;i++){
+    const inp=document.createElement("input"); inp.id="team"+i; inp.maxLength=18;
+    inp.value=prev[i]||DEFAULT_NAMES[i]; inp.setAttribute("aria-label",`Team ${i+1} name`); box.appendChild(inp);
+  }
+}
+function fresh(names,pace,penalty){
+  return {names, pace, penalty, picker:0, used:{}, adj:names.map(()=>0),
+          cur:null, phase:"board", clock:0, secs:0, paused:false,
+          final:{wagers:names.map(()=>0), marks:names.map(()=>0), done:false}};
+}
+function key(c,r){return c+"-"+r}
+
+function scores(){
+  return S.names.map((_,t)=>{
+    let s=S.adj[t];
+    for(const k in S.used){
+      const u=S.used[k]; if(!u.scored) continue;
+      const [c,r]=k.split("-").map(Number), clue=CATS[c].clues[r], val=VALUES[r];
+      if(clue.dd){ if(u.team===t){ const m=u.marks[t]; if(m===1)s+=u.wager; else if(m===2)s-=u.wager; } }
+      else { const m=u.marks[t]; if(m===1)s+=val; else if(m===2&&S.penalty)s-=val; }
+    }
+    if(S.final.done){ const m=S.final.marks[t], w=S.final.wagers[t]; if(m===1)s+=w; else if(m===2)s-=w; }
+    return s;
+  });
+}
+
+function renderBoard(){
+  let h="";
+  CATS.forEach(c=>{ h+=`<div class="cat">${esc(c.name)}<small>${esc(c.sub)}</small></div>`; });
+  VALUES.forEach((v,r)=>{
+    CATS.forEach((c,ci)=>{
+      const u=S.used[key(ci,r)];
+      h+=`<button class="tile" type="button" data-c="${ci}" data-r="${r}" ${u?"disabled":""} aria-label="${esc(c.name)} for ${v}">${u?`<span class="done">${esc(u.label||"Done")}</span>`:v}</button>`;
+    });
+  });
+  $("board").innerHTML=h;
+  $("board").querySelectorAll(".tile:not([disabled])").forEach(b=>b.addEventListener("click",()=>openClue(+b.dataset.c,+b.dataset.r)));
+}
+function renderTeams(){
+  const sc=scores();
+  $("teams").innerHTML=S.names.map((n,i)=>`
+    <div class="team${i===S.picker?" pick":""}" data-t="${i}" role="button" tabindex="0" aria-label="Make ${esc(n)} the picking team">
+      <span class="nm">${esc(n)}</span><span class="sc${sc[i]<0?" neg":""}">${sc[i]}</span>
+      <span class="adj"><button type="button" data-a="-100" data-t="${i}" aria-label="Subtract 100">−100</button><button type="button" data-a="100" data-t="${i}" aria-label="Add 100">+100</button></span>
+    </div>`).join("");
+  $("teams").querySelectorAll(".team").forEach(el=>el.addEventListener("click",e=>{
+    const a=e.target.closest("button[data-a]");
+    if(a){ S.adj[+a.dataset.t]+=+a.dataset.a; renderTeams(); return; }
+    S.picker=+el.dataset.t; renderTeams(); renderPicker();
+  }));
+  renderPicker();
+}
+function renderPicker(){ $("picker").innerHTML=`<b>${esc(S.names[S.picker])}</b> picks next`; }
+
+/* Clue flow */
+function openClue(c,r){
+  const clue=CATS[c].clues[r];
+  S.cur={c,r,final:false}; S.used[key(c,r)]={marks:S.names.map(()=>0), team:S.picker, wager:0, scored:false, label:""};
+  if(clue.dd){
+    $("splashText").innerHTML=`Daily Double<small>${esc(S.names[S.picker])} only</small>`;
+    $("splash").hidden=false; chime([523,659,784,1047],.13);
+    setTimeout(()=>{ $("splash").hidden=true; showClue("wager"); },1800);
+  } else showClue("question");
+}
+function showClue(phase){
+  const {c,r}=S.cur, clue=CATS[c].clues[r], val=VALUES[r];
+  S.phase=phase; S.paused=false;
+  $("clue").hidden=false; $("clue").scrollTop=0;
+  $("cCat").textContent=CATS[c].name;
+  const v=$("cVal"); v.textContent=clue.dd?"Daily Double":val; v.classList.toggle("dd",!!clue.dd);
+  $("finWager").hidden=true;
+  if(phase==="wager"){
+    const sc=scores()[S.picker], max=Math.max(sc,1000);
+    $("ddWho").textContent=S.names[S.picker]; $("ddMax").textContent=`Up to ${max}`;
+    $("ddInput").max=max; $("ddInput").value=Math.min(max,Math.max(500,0));
+    $("ddWager").hidden=false; $("qtext").hidden=true; $("cAns").hidden=true; $("markBox").hidden=true;
+    $("ring").hidden=true; $("cNext").hidden=true; $("cPause").hidden=true;
+    setTimeout(()=>$("ddInput").focus(),50);
+    return;
+  }
+  $("ddWager").hidden=true; $("qtext").hidden=false; $("ring").hidden=false; $("cNext").hidden=false;
+  $("cQ").innerHTML=nb(clue.q);
+  $("cA").innerHTML=clue.a; $("cW").innerHTML=clue.w;
+  S.secs=Math.round(BASE_SECS[val]*S.pace); S.clock=S.secs;
+  renderClue(); startClock();
+}
+function renderClue(){
+  const rev=S.phase==="reveal";
+  $("cAns").hidden=!rev; $("markBox").hidden=!rev;
+  $("cPause").hidden=rev||S.phase!=="question";
+  $("cCancel").hidden=!(S.cur && !S.cur.final && S.phase==="question");
+  if(rev) renderMarks();
+  $("cNext").textContent = S.phase==="question" ? "Show answer" : (S.cur.final ? "Final scores" : "Back to the board");
+  renderClock();
+}
+function renderMarks(){
+  let marks, who;
+  if(S.cur.final){ marks=S.final.marks; who=S.names.map((_,i)=>i); $("markLbl").textContent="Tap once for right, twice for wrong. Each team wins or loses its wager."; }
+  else {
+    const clue=CATS[S.cur.c].clues[S.cur.r], u=S.used[key(S.cur.c,S.cur.r)]; marks=u.marks;
+    who = clue.dd ? [u.team] : S.names.map((_,i)=>i);
+    $("markLbl").textContent = clue.dd ? `Was ${S.names[u.team]} right? (wager: ${u.wager})` : (S.penalty ? "Tap once for right, twice for wrong (wrong loses points)" : "Tap every team that got it right");
+  }
+  $("marks").innerHTML=who.map(t=>`<button type="button" class="mark${marks[t]===1?" ok":marks[t]===2?" no":""}" data-t="${t}"><span class="n">${t+1}</span>${esc(S.names[t])}${marks[t]===1?" ✓":marks[t]===2?" ✗":""}</button>`).join("");
+  $("marks").querySelectorAll(".mark").forEach(b=>b.addEventListener("click",()=>cycleMark(+b.dataset.t)));
+}
+function cycleMark(t){
+  if(S.phase!=="reveal")return;
+  let marks;
+  if(S.cur.final) marks=S.final.marks;
+  else { const clue=CATS[S.cur.c].clues[S.cur.r], u=S.used[key(S.cur.c,S.cur.r)]; if(clue.dd&&t!==u.team)return; marks=u.marks; }
+  const twoState = !S.cur.final && !CATS[S.cur.c].clues[S.cur.r].dd && !S.penalty;
+  marks[t] = twoState ? (marks[t]===1?0:1) : (marks[t]+1)%3;
+  if(marks[t]===1) chime([784],.1);
+  renderMarks();
+}
+function clueNext(){
+  if(S.phase==="question"){ S.phase="reveal"; stopClock(); renderClue(); return; }
+  if(S.phase!=="reveal") return;
+  if(S.cur.final){ S.final.done=true; $("clue").hidden=true; S.phase="board"; renderTeams(); endGame(); return; }
+  const k=key(S.cur.c,S.cur.r), u=S.used[k];
+  u.scored=true;
+  const right=u.marks.map((m,i)=>m===1?i:-1).filter(i=>i>=0);
+  u.label = right.length ? `✓ ${right.length} team${right.length>1?"s":""}` : "No one";
+  $("clue").hidden=true; S.phase="board"; S.cur=null;
+  S.picker=(S.picker+1)%S.names.length;
+  renderBoard(); renderTeams();
+  if(Object.keys(S.used).length===25) chime([523,659,784],.16);
+}
+function cancelClue(){
+  if(!S.cur||S.cur.final)return;
+  stopClock(); delete S.used[key(S.cur.c,S.cur.r)];
+  $("clue").hidden=true; S.phase="board"; S.cur=null; renderBoard(); renderTeams();
+}
+function lockDD(){
+  const u=S.used[key(S.cur.c,S.cur.r)], max=+$("ddInput").max;
+  u.wager=Math.max(0,Math.min(max,Math.round(+$("ddInput").value||0)));
+  showClue("question");
+}
+
+/* Final */
+function openFinal(){
+  S.cur={final:true}; S.phase="finwager";
+  $("clue").hidden=false; $("clue").scrollTop=0;
+  $("cCat").textContent=FINAL.cat; const v=$("cVal"); v.textContent="Final Jeopardy"; v.classList.add("dd");
+  const sc=scores();
+  $("finWager").innerHTML=S.names.map((n,i)=>`<label for="fw${i}">${esc(n)} (max ${Math.max(0,sc[i])})<input id="fw${i}" type="number" min="0" max="${Math.max(0,sc[i])}" step="100" value="${Math.min(S.final.wagers[i],Math.max(0,sc[i]))}"></label>`).join("")+`<button class="btn go" id="finGo" type="button">Lock wagers &amp; show clue</button>`;
+  $("finWager").hidden=false; $("ddWager").hidden=true;
+  $("qtext").hidden=false; $("cQ").innerHTML=`<span style="color:var(--gold-hi)">Category: ${esc(FINAL.cat)}</span><br><span style="font-size:.55em;font-weight:600;color:var(--muted)">Teams write down their wagers first. Enter them, then show the clue.</span>`;
+  $("cAns").hidden=true; $("markBox").hidden=true; $("ring").hidden=true; $("cNext").hidden=true; $("cPause").hidden=true; $("cCancel").hidden=false;
+  $("cCancel").textContent="Back to the board";
+  $("finGo").addEventListener("click",lockFinal);
+}
+function lockFinal(){
+  const sc=scores();
+  S.final.wagers=S.names.map((_,i)=>Math.max(0,Math.min(Math.max(0,sc[i]),Math.round(+$("fw"+i).value||0))));
+  S.final.marks=S.names.map(()=>0);
+  $("finWager").hidden=true; $("ring").hidden=false; $("cNext").hidden=false; $("cCancel").hidden=true;
+  $("cQ").innerHTML=nb(FINAL.q); $("cA").innerHTML=FINAL.a; $("cW").innerHTML=FINAL.w;
+  S.phase="question"; S.secs=Math.round(120*S.pace); S.clock=S.secs; S.paused=false;
+  renderClue(); startClock(); chime([392,523],.2);
+}
+function endGame(){
+  const sc=scores(), order=S.names.map((n,i)=>({n,s:sc[i]})).sort((a,b)=>b.s-a.s), top=order[0].s;
+  $("podium").innerHTML=order.map((o,i)=>`<div class="pod${o.s===top?" win":""}"><span class="pl">${i+1}</span><span>${esc(o.n)}</span><span>${o.s}</span></div>`).join("");
+  $("end").hidden=false; chime([523,659,784,1047],.16);
+}
+
+/* Timer */
+function startClock(){
+  stopClock();
+  timer=setInterval(()=>{
+    if(S.phase!=="question"||S.paused)return;
+    S.clock=Math.max(0,S.clock-1);
+    if(S.clock===0){stopClock();chime([440,330],.25)}
+    renderClock();
+  },1000);
+}
+function stopClock(){if(timer){clearInterval(timer);timer=null}}
+function renderClock(){
+  const r=$("ring");
+  if(S.phase==="question"){
+    const m=Math.floor(S.clock/60), s=S.clock%60;
+    $("secs").textContent=S.clock===0?"Time":`${m}:${String(s).padStart(2,"0")}`;
+    r.style.setProperty("--p",S.secs?S.clock/S.secs:0); r.classList.toggle("low",S.clock<=10);
+  } else { $("secs").textContent="✓"; r.style.setProperty("--p",0); r.classList.remove("low"); }
+  $("cPause").textContent=S.paused?"Resume timer":"Pause timer";
+}
+
+let actx=null;
+function chime(freqs,dur){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    freqs.forEach((f,i)=>{
+      const o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime+i*dur*.8;
+      o.type="triangle";o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+dur*1.6);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+dur*1.7);
+    });
+  }catch(e){}
+}
+
+function start(){
+  const n=+$("nteams").value;
+  const names=[...Array(n)].map((_,i)=>($("team"+i).value.trim()||DEFAULT_NAMES[i]));
+  S=fresh(names,+$("pace").value,$("penalty").checked);
+  $("setup").hidden=true; $("end").hidden=true; $("clue").hidden=true;
+  renderBoard(); renderTeams(); window.scrollTo(0,0);
+}
+
+$("nteams").addEventListener("change",buildNameInputs);
+$("start").addEventListener("click",start);
+$("cNext").addEventListener("click",clueNext);
+$("cPause").addEventListener("click",()=>{S.paused=!S.paused;renderClock()});
+$("cCancel").addEventListener("click",()=>{ if(S.cur&&S.cur.final){ $("clue").hidden=true; S.phase="board"; S.cur=null; $("cCancel").textContent="Back to board without scoring"; } else cancelClue(); });
+$("ddGo").addEventListener("click",lockDD);
+$("finalBtn").addEventListener("click",openFinal);
+$("backBoard").addEventListener("click",()=>{$("end").hidden=true});
+$("again").addEventListener("click",()=>{$("end").hidden=true;$("setup").hidden=false;window.scrollTo(0,0)});
+$("restart").addEventListener("click",()=>{stopClock();$("clue").hidden=true;$("setup").hidden=false;window.scrollTo(0,0)});
+$("full").addEventListener("click",()=>{
+  if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{})}
+  else{document.documentElement.requestFullscreen?.().catch(()=>{})}
+});
+document.addEventListener("keydown",e=>{
+  if(!$("setup").hidden){ if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();start();} return; }
+  if(!$("end").hidden||!$("splash").hidden||!S||$("clue").hidden)return;
+  if(e.target.tagName==="INPUT"){ if(e.key==="Enter"){ e.preventDefault(); if(!$("ddWager").hidden)lockDD(); else if(!$("finWager").hidden)lockFinal(); } return; }
+  if(e.key==="Enter"){e.preventDefault();clueNext()}
+  else if(e.key===" "){e.preventDefault();if(S.phase==="question"){S.paused=!S.paused;renderClock()}}
+  else if(/^[1-6]$/.test(e.key)){cycleMark(+e.key-1)}
+});
+
+buildNameInputs();
+S=fresh(DEFAULT_NAMES.slice(0,4),1,false);
+renderBoard(); renderTeams();
+</script>
+
+</body>
+</html>
