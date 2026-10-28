@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trick-or-Treat Street</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Creepster&family=Nunito:wght@400;700;900&display=swap">
+<style>
+/* Layout: a street of 14 houses at night. Pick a house, answer the question at its door, then open the bag to see what candy (points) it gave. Scores along the bottom. Single dark look on purpose (projector). */
+:root{
+  --sky:#120d1c;
+  --sky-2:#1d1430;
+  --house:#2a2140;
+  --house-2:#33284d;
+  --line:#41355e;
+  --moon:#fbf2d5;
+  --pumpkin:#ff7a1a;
+  --glow:#ffc94a;
+  --slime:#9be15d;
+  --muted:#b6a9cf;
+  --bad:#ff5e6c;
+  --a1:#ff7a1a; --a2:#9be15d; --a3:#b28cff; --a4:#4fd1e8;
+  --f-display:"Creepster","Chiller",Impact,fantasy;
+  --f-body:"Nunito","Segoe UI",Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{height:100%;overflow-x:hidden}
+body{margin:0;padding-inline:16px;background:var(--sky);color:var(--moon);font-family:var(--f-body);position:relative;
+  background-image:radial-gradient(circle at 88% 8%, rgba(251,242,213,.22) 0 46px, rgba(251,242,213,.06) 47px 120px, transparent 121px),linear-gradient(180deg,var(--sky),var(--sky-2));background-attachment:fixed}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--glow);outline-offset:3px}
+.fx{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-style:italic;font-weight:500;white-space:nowrap}
+
+.app{max-width:1440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:12px;padding-block:12px}
+.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.logo{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,4vw,56px);margin:0;line-height:1;color:var(--pumpkin);letter-spacing:.02em;text-shadow:0 0 18px rgba(255,122,26,.35)}
+.logo span{color:var(--slime)}
+.sub{font-size:14px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+.picker{margin-left:auto;font-size:clamp(15px,1.4vw,19px);color:var(--muted)}
+.picker b{color:var(--glow)}
+
+/* Street */
+.street{flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(8px,1.4vw,20px) clamp(6px,1vw,16px);align-content:center;padding-block:8px;position:relative}
+.street::after{content:"";position:absolute;left:-16px;right:-16px;bottom:-6px;height:10px;background:#0b0812;border-top:2px dashed #3b3152}
+.house{border:0;background:none;padding:0;position:relative;aspect-ratio:1/1.12;display:flex;flex-direction:column;justify-content:flex-end;transition:transform .15s}
+.house:hover:not([disabled]){transform:translateY(-4px)}
+.house .roof{height:38%;background:var(--house-2);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.house .body{height:62%;background:var(--house);border-radius:0 0 4px 4px;position:relative}
+.house .win{position:absolute;top:14%;width:22%;aspect-ratio:1;background:var(--glow);border-radius:3px;box-shadow:0 0 12px rgba(255,201,74,.55)}
+.house .win.l{left:12%} .house .win.r{right:12%}
+.house .door{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:34%;height:58%;background:var(--pumpkin);border-radius:40% 40% 0 0 / 22% 22% 0 0;display:grid;place-items:center;font-weight:900;font-size:clamp(14px,1.6vw,24px);color:#2a1200}
+.house .topic{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-size:clamp(9px,.8vw,12px);font-weight:900;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;max-width:96%;overflow:hidden;text-overflow:ellipsis;color:var(--muted);z-index:1}
+.house[disabled]{cursor:default}
+.house[disabled] .win{background:#1a1428;box-shadow:none}
+.house[disabled] .door{background:#120d1c;color:var(--slime);font-size:clamp(10px,1vw,14px);line-height:1.1;text-align:center;padding:4px 2px}
+.house[disabled] .roof,.house[disabled] .body{opacity:.6}
+
+/* Teams */
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.team{background:rgba(42,33,64,.85);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px;text-align:left;cursor:pointer}
+.team.pick{border-color:var(--glow);box-shadow:inset 0 -3px 0 var(--glow)}
+.team .nm{font-weight:900;font-size:clamp(14px,1.3vw,18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team .sc{font-weight:900;font-size:clamp(20px,2.2vw,30px);font-variant-numeric:tabular-nums;color:var(--glow)}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--house);border-radius:99px;padding:9px 18px;font-weight:700;font-size:15px}
+.btn:hover{border-color:var(--muted)}
+.btn.go{background:var(--pumpkin);border-color:var(--pumpkin);color:#2a1200;font-weight:900;font-size:17px;padding:9px 24px}
+.keys{margin-left:auto;font-size:13px;color:var(--muted)}
+kbd{font-family:var(--f-body);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--moon)}
+
+/* Question screen */
+.qscreen{position:fixed;inset:0;z-index:4;overflow:auto;padding:16px;background:linear-gradient(180deg,var(--sky),var(--sky-2))}
+.q-in{max-width:1300px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:14px}
+.qhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.qhead .h{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,3vw,42px);color:var(--pumpkin);line-height:1}
+.qhead .t{font-size:14px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ring{--p:1;margin-left:auto;width:clamp(56px,5.4vw,78px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--pumpkin) calc(var(--p)*360deg), var(--line) 0);position:relative}
+.ring::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--sky)}
+.ring b{position:relative;font-weight:900;font-size:clamp(18px,2vw,28px);font-variant-numeric:tabular-nums}
+.ring.low{background:conic-gradient(var(--bad) calc(var(--p)*360deg), var(--line) 0)}
+.qcard{background:rgba(42,33,64,.9);border:1px solid var(--line);border-radius:18px;padding:clamp(16px,2.4vh,28px) clamp(16px,2vw,30px)}
+.q{margin:0;font-size:clamp(22px,2.6vw,40px);font-weight:900;line-height:1.25;text-wrap:balance;overflow-wrap:break-word}
+.answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ans{display:flex;align-items:center;gap:14px;border-radius:14px;padding:clamp(12px,1.8vh,20px) 18px;font-size:clamp(17px,1.8vw,27px);font-weight:700;line-height:1.25;color:#160f22;min-width:0;transition:opacity .25s,box-shadow .25s}
+.ans .k{flex:none;width:1.9em;height:1.9em;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.18);font-weight:900}
+.ans .tx{min-width:0;overflow-wrap:break-word}
+.ans.c1{background:var(--a1)} .ans.c2{background:var(--a2)} .ans.c3{background:var(--a3)} .ans.c4{background:var(--a4)}
+.revealed .ans{opacity:.25}
+.revealed .ans.right{opacity:1;box-shadow:0 0 0 4px var(--moon)}
+.ans .tick{margin-left:auto;font-weight:900;flex:none}
+.after{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;align-items:start}
+.why,.award{background:rgba(42,33,64,.9);border:1px solid var(--line);border-radius:14px;padding:14px 18px}
+.why{font-size:clamp(15px,1.4vw,20px);line-height:1.45;margin:0;overflow-wrap:break-word}
+.lbl{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:900;margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--line);background:transparent;border-radius:99px;padding:7px 14px;font-weight:900;font-size:16px}
+.chip .n{opacity:.55;font-size:13px;margin-right:4px}
+.chip[aria-pressed="true"]{background:var(--slime);border-color:var(--slime);color:#10230a}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(10,7,16,.95);display:grid;place-items:center;padding:16px;z-index:6;overflow:auto}
+#setup{position:absolute;inset:0 0 auto 0;min-height:100%;overflow:visible}
+.card{background:var(--house);border:1px solid var(--line);border-radius:20px;padding:clamp(20px,3vw,40px);max-width:820px;width:100%;display:flex;flex-direction:column;gap:16px}
+.card h1{font-family:var(--f-display);font-weight:400;font-size:clamp(48px,7vw,96px);line-height:.9;margin:0;color:var(--pumpkin);letter-spacing:.02em}
+.card h1 span{color:var(--slime)}
+.card p{margin:0;font-size:17px;line-height:1.5;color:#e9e1f7}
+.rules{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:16px;line-height:1.4;margin:0}
+.rules dt{font-weight:900;color:var(--glow)}
+.rules dd{margin:0;color:#e9e1f7}
+.bag{display:flex;flex-wrap:wrap;gap:8px}
+.bag span{border:1px solid var(--line);border-radius:99px;padding:3px 12px;font-size:14px;font-weight:700;color:var(--muted)}
+.bag b{color:var(--glow)}
+.setrow{display:flex;gap:14px;flex-wrap:wrap;align-items:end}
+.setrow label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.setrow select{font:inherit;font-size:16px;background:var(--sky);color:var(--moon);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.names input{font:inherit;font-size:16px;font-weight:700;background:var(--sky);color:var(--moon);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+.big{font-family:var(--f-display);font-weight:400;font-size:clamp(64px,12vw,180px);line-height:.9;text-align:center;color:var(--pumpkin);text-shadow:0 0 30px rgba(255,122,26,.4)}
+.big.trick{color:var(--slime);text-shadow:0 0 30px rgba(155,225,93,.4)}
+.big small{display:block;font-family:var(--f-body);font-weight:900;font-size:.2em;color:var(--moon);letter-spacing:.06em;margin-top:.5em;text-shadow:none}
+@media (prefers-reduced-motion:no-preference){.big{animation:pop .5s cubic-bezier(.2,1.5,.4,1)}}
+@keyframes pop{from{transform:scale(.5) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
+.pod{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 14px;border-radius:10px;background:var(--sky);font-size:20px;font-weight:900}
+.pod .pl{color:var(--pumpkin)}
+.pod.win{background:var(--pumpkin);color:#2a1200}
+.pod.win .pl{color:#2a1200}
+.podium{display:flex;flex-direction:column;gap:8px}
+
+@media (max-width:900px){ .street{grid-template-columns:repeat(4,minmax(0,1fr))} .after{grid-template-columns:1fr} }
+@media (max-width:640px){
+  .street{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .answers{grid-template-columns:1fr}
+  .keys{display:none}
+  .overlay{padding:10px}
+  .card{padding:18px;gap:14px}
+  .card h1{font-size:clamp(40px,13vw,64px)}
+  .fx{white-space:normal}
+}
+</style>
+</head>
+<body>
+<noscript><div style="position:fixed;inset:0;z-index:99;background:#120d1c;color:#fbf2d5;display:grid;place-items:center;padding:24px;font:20px/1.5 Arial,sans-serif;text-align:center"><div><b style="color:#ff7a1a;font-size:28px">This preview has scripts turned off.</b><br>Download the file, then double-click it to open it in Chrome, Safari, Edge or Firefox.</div></div></noscript>
+
+
+<div class="app">
+  <header class="top">
+    <h1 class="logo">Trick-or-Treat <span>Street</span></h1>
+    <span class="sub">Perfect competition · Lecture 9</span>
+    <span class="picker" id="picker"><b>Team</b> picks the next house</span>
+  </header>
+  <section class="street" id="street" aria-label="Houses"></section>
+  <section class="teams" id="teams" aria-label="Candy counts"></section>
+  <nav class="ctrl">
+    <button class="btn go" id="endBtn" type="button">Count the candy</button>
+    <button class="btn" id="full" type="button">Full screen</button>
+    <button class="btn" id="restart" type="button">New game</button>
+    <span class="keys">Click a team to make it the picker · <kbd>Enter</kbd> next step · <kbd>Space</kbd> timer · <kbd>1</kbd>–<kbd>6</kbd> mark teams</span>
+  </nav>
+</div>
+
+<section class="qscreen" id="qscreen" hidden>
+  <div class="q-in" id="qin">
+    <div class="qhead">
+      <span class="h" id="qHouse">House 1</span><span class="t" id="qTopic">Topic</span>
+      <div class="ring" id="ring"><b id="secs">25</b></div>
+    </div>
+    <div class="qcard"><p class="q" id="qText"></p></div>
+    <div class="answers" id="answers"></div>
+    <div class="after" id="after" hidden>
+      <p class="why" id="why"></p>
+      <div class="award"><span class="lbl">Tap every team that got it right</span><div class="chips" id="chips"></div></div>
+    </div>
+    <div class="ctrl">
+      <button class="btn go" id="qNext" type="button">Reveal answer</button>
+      <button class="btn" id="qPause" type="button">Pause timer</button>
+      <button class="btn" id="qCancel" type="button">Back to the street</button>
+    </div>
+  </div>
+</section>
+
+<div class="overlay" id="setup">
+  <div class="card">
+    <h1>Trick-or-Treat <span>Street</span></h1>
+    <p>Fourteen houses, fourteen questions on perfect competition. Every team answers at every door. What's in the bag is a surprise.</p>
+    <dl class="rules">
+      <dt>Knock</dt><dd>Teams take turns picking a house. Its question goes to everyone.</dd>
+      <dt>Answer</dt><dd>When the timer runs out, each team holds up 1–4 fingers.</dd>
+      <dt>Candy</dt><dd>Mark the teams that got it right, then open the bag. Every correct team gets that house's candy.</dd>
+    </dl>
+    <div class="bag"><span><b>Raisins</b> 50</span><span><b>Fun size</b> 100</span><span><b>Full size</b> 200</span><span><b>King size</b> 300</span><span><b>Haunted house</b> 500</span></div>
+    <div class="setrow">
+      <label for="nteams">Teams<select id="nteams"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+      <label for="tsec">Timer<select id="tsec"><option value="20">20 sec</option><option value="30" selected>30 sec</option><option value="45">45 sec</option><option value="60">60 sec</option></select></label>
+    </div>
+    <div class="names" id="names"></div>
+    <div class="ctrl"><button class="btn go" id="start" type="button">Start trick-or-treating</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="splash" hidden><div class="big" id="splashText">King size!</div></div>
+
+<div class="overlay" id="end" hidden>
+  <div class="card">
+    <h1>Candy <span>count</span></h1>
+    <div class="podium" id="podium"></div>
+    <p>Takeaways: firms produce where P = MC. They shut down in the short run if P &lt; min AVC. In the long run, entry and exit drive economic profit to zero, so P = min AC.</p>
+    <div class="ctrl"><button class="btn go" id="backStreet" type="button">Back to the street</button><button class="btn" id="again" type="button">New game</button></div>
+  </div>
+</div>
+
+<script>
+const F = s => `<span class="fx">${s}</span>`;
+const DEFAULT_NAMES = ["Ghosts","Goblins","Witches","Zombies","Vampires","Mummies"];
+const CANDY = [
+  {name:"Raisins", pts:50, trick:true, line:"Trick! Somebody's handing out raisins."},
+  {name:"Raisins", pts:50, trick:true, line:"Trick! More raisins."},
+  {name:"Fun size", pts:100, line:"A fun-size bar."},
+  {name:"Fun size", pts:100, line:"A fun-size bar."},
+  {name:"Fun size", pts:100, line:"A fun-size bar."},
+  {name:"Fun size", pts:100, line:"A fun-size bar."},
+  {name:"Fun size", pts:100, line:"A fun-size bar."},
+  {name:"Full size", pts:200, line:"A full-size bar!"},
+  {name:"Full size", pts:200, line:"A full-size bar!"},
+  {name:"Full size", pts:200, line:"A full-size bar!"},
+  {name:"Full size", pts:200, line:"A full-size bar!"},
+  {name:"King size", pts:300, line:"KING SIZE!"},
+  {name:"King size", pts:300, line:"KING SIZE!"},
+  {name:"Haunted house", pts:500, line:"This house is haunted, and it's loaded."}
+];
+
+// c = index of the correct answer
+const QS = [
+ {t:"The market", q:`Which is <b>not</b> a defining feature of a perfectly competitive market?`,
+  a:["Many buyers and sellers","Identical (undifferentiated) products","Perfect information about prices","Each firm sets its own price"], c:3,
+  e:`Firms are price takers. With many sellers of identical products and perfect information, nobody can charge more than the market price.`},
+ {t:"Econ profit", q:`A witch quits a $50,000 job to run a pumpkin patch. Revenue: $90,000. Explicit costs: $30,000. What is her <b>economic</b> profit?`,
+  a:["$60,000","$10,000","$40,000","−$20,000"], c:1,
+  e:`Economic cost = explicit + implicit = 30,000 + 50,000 (the salary she gave up) = 80,000. Economic profit = 90,000 − 80,000 = $10,000. $60,000 is accounting profit.`},
+ {t:"The rule", q:`A price-taking firm maximizes profit by producing where…`,
+  a:["P = AC","MC = 0","P = MC","P = AVC"], c:2,
+  e:`Keep producing while an extra unit sells for more than it costs. Since P is also marginal revenue, stop where P = MR = MC.`},
+ {t:"Find Q*", q:`${F("TC(Q) = 3Q<sup>2</sup> + 12")} and the market price is P = $30. What is the profit-maximizing Q?`,
+  a:["10","2.5","15","5"], c:3,
+  e:`${F("MC = 6Q")}. Set P = MC: 30 = 6Q, so Q* = 5.`},
+ {t:"Profit", q:`Same firm: ${F("TC = 3Q<sup>2</sup> + 12")}, P = $30, Q* = 5. What is its profit?`,
+  a:["$150","$63","$87","$75"], c:1,
+  e:`TR = 30 × 5 = 150. TC = 3(25) + 12 = 87. π = 150 − 87 = $63.`},
+ {t:"Shut down", q:`In the <b>short run</b>, a firm produces nothing if the price falls below…`,
+  a:["min ATC","min MC","min AVC","min AFC"], c:2,
+  e:`Fixed costs are sunk in the short run. As long as P covers average variable cost, producing helps pay off some of them. Below min AVC, shut down. That's the shut-down price.`},
+ {t:"Break even", q:`The <b>break-even</b> price, below which the firm exits in the long run, is…`,
+  a:["min ATC","min AVC","max ATC","min MC"], c:0,
+  e:`At P = min ATC, economic profit is exactly zero. Below that, the firm loses money even after adjusting everything, so it leaves.`},
+ {t:"Labor demand", q:`A price taker has ${F("MP<sub>L</sub> = 20 − L")}. The wage is w = $10 and the output price is P = $2. How much labor does it hire?`,
+  a:["5","10","18","15"], c:3,
+  e:`Hire until ${F("P · MP<sub>L</sub> = w")}: 2(20 − L) = 10, so 20 − L = 5 and L* = 15.`},
+ {t:"SR equilibrium", q:`200 identical firms each have ${F("SMC = 100Q")}. Market demand is ${F("Q<sub>D</sub> = 60 − P")}. What is the equilibrium price?`,
+  a:["$30","$20","$15","$40"], c:1,
+  e:`Each firm supplies Q = P/100, so the market supplies 200 × P/100 = 2P. Set 2P = 60 − P: P* = $20 and Q* = 40 (0.2 per firm).`},
+ {t:"Elastic supply", q:`Supply in a market is perfectly elastic (horizontal). Demand <b>rises</b>. In the short run…`,
+  a:["Price unchanged, quantity rises","Price rises, quantity rises","Price rises, quantity unchanged","Price unchanged, quantity falls"], c:0,
+  e:`A horizontal supply curve means sellers will provide any quantity at that price. Demand shifts right, so you slide along supply: same price, more sold.`},
+ {t:"Entry", q:`Firms in a competitive market are earning positive economic profit. In the long run…`,
+  a:["Firms enter, and price falls until P = min AC","Firms exit, and price rises","Price rises until P = max AC","Nothing changes; profit stays positive"], c:0,
+  e:`Free entry: profit attracts new firms, supply shifts right, and price falls until economic profit is zero at P = min AC.`},
+ {t:"How many firms", q:`Each firm's AC is lowest at Q = 20, where AC = $10. Market demand is ${F("Q<sub>D</sub> = 5,000 − 100P")}. In long-run equilibrium, how many firms are there?`,
+  a:["400","250","200","500"], c:2,
+  e:`Long run: P* = min AC = $10. Then Q<sub>D</sub> = 5,000 − 1,000 = 4,000. n* = 4,000 / 20 = 200 firms.`},
+ {t:"Cost industries", q:`In an <b>increasing-cost</b> industry, the long-run market supply curve is…`,
+  a:["Horizontal","Upward-sloping","Downward-sloping","Vertical"], c:1,
+  e:`As the industry grows, input prices rise (think industry-specific inputs like pharmacists), so min AC rises. Each new long-run equilibrium has a higher price.`},
+ {t:"Producer surplus", q:`Market supply is ${F("Q = 20P")} (no fixed costs). At a price of $5, what is producer surplus?`,
+  a:["$500","$125","$100","$250"], c:3,
+  e:`At P = 5, Q = 100. PS is the triangle between the price and the supply curve: ½ × 100 × 5 = $250.`}
+];
+
+let S=null, timer=null;
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function buildNameInputs(){
+  const n=+$("nteams").value, box=$("names"), prev=[...box.querySelectorAll("input")].map(i=>i.value);
+  box.innerHTML="";
+  for(let i=0;i<n;i++){
+    const inp=document.createElement("input"); inp.id="team"+i; inp.maxLength=18;
+    inp.value=prev[i]||DEFAULT_NAMES[i]; inp.setAttribute("aria-label",`Team ${i+1} name`); box.appendChild(inp);
+  }
+}
+function fresh(names,secs){
+  return {names, secs, picker:0, candy:shuffle(CANDY), visited:{}, cur:null, phase:"street", clock:secs, paused:false};
+}
+function scores(){
+  return S.names.map((_,t)=>Object.entries(S.visited).reduce((s,[i,v])=>s+(v.opened&&v.marks[t]?S.candy[i].pts:0),0));
+}
+
+function renderStreet(){
+  $("street").innerHTML=QS.map((q,i)=>{
+    const v=S.visited[i], done=v&&v.opened;
+    return `<button class="house" type="button" data-i="${i}" ${done?"disabled":""} aria-label="House ${i+1}: ${esc(q.t)}">
+      <span class="topic">${esc(q.t)}</span><span class="roof"></span>
+      <span class="body"><span class="win l"></span><span class="win r"></span><span class="door">${done?esc(S.candy[i].name):i+1}</span></span></button>`;
+  }).join("");
+  $("street").querySelectorAll(".house:not([disabled])").forEach(b=>b.addEventListener("click",()=>knock(+b.dataset.i)));
+}
+function renderTeams(){
+  const sc=scores();
+  $("teams").innerHTML=S.names.map((n,i)=>`<div class="team${i===S.picker?" pick":""}" data-t="${i}" role="button" tabindex="0"><span class="nm">${esc(n)}</span><span class="sc">${sc[i]}</span></div>`).join("");
+  $("teams").querySelectorAll(".team").forEach(el=>el.addEventListener("click",()=>{S.picker=+el.dataset.t;renderTeams()}));
+  $("picker").innerHTML=`<b>${esc(S.names[S.picker])}</b> picks the next house`;
+}
+
+function knock(i){
+  S.cur=i; S.visited[i]={marks:S.names.map(()=>false), opened:false};
+  S.phase="question"; S.clock=S.secs; S.paused=false;
+  $("splashText").className="big"; $("splashText").innerHTML=`Knock knock<small>House ${i+1}</small>`;
+  $("splash").hidden=false; chime([392,330],.16);
+  setTimeout(()=>{$("splash").hidden=true; $("qscreen").hidden=false; $("qscreen").scrollTop=0; renderQ(); startClock();},900);
+}
+function renderQ(){
+  const i=S.cur, q=QS[i], rev=S.phase!=="question";
+  $("qHouse").textContent=`House ${i+1}`; $("qTopic").textContent=q.t;
+  $("qText").innerHTML=q.q;
+  $("answers").innerHTML=q.a.map((t,j)=>`<div class="ans c${j+1}${rev&&j===q.c?" right":""}"><span class="k">${j+1}</span><span class="tx">${t}</span>${rev&&j===q.c?'<span class="tick">✓</span>':""}</div>`).join("");
+  $("qin").classList.toggle("revealed",rev);
+  $("after").hidden=!rev;
+  if(rev){
+    $("why").innerHTML=`<span class="lbl">Why</span>${q.e}`;
+    const m=S.visited[i].marks;
+    $("chips").innerHTML=S.names.map((n,t)=>`<button type="button" class="chip" id="chip${t}" aria-pressed="${m[t]}"><span class="n">${t+1}</span>${esc(n)}</button>`).join("");
+    S.names.forEach((_,t)=>$("chip"+t).addEventListener("click",()=>toggle(t)));
+  }
+  $("qNext").textContent = S.phase==="question" ? "Reveal answer" : "Open the bag";
+  $("qPause").hidden=S.phase!=="question"; $("qCancel").hidden=S.phase!=="question";
+  renderClock();
+}
+function toggle(t){
+  if(S.phase!=="reveal"||t>=S.names.length)return;
+  const m=S.visited[S.cur].marks; m[t]=!m[t]; if(m[t])chime([784],.1); renderQ();
+}
+function qNext(){
+  if(S.phase==="question"){ S.phase="reveal"; stopClock(); renderQ(); return; }
+  if(S.phase!=="reveal") return;
+  const i=S.cur, c=S.candy[i], winners=S.visited[i].marks.filter(Boolean).length;
+  S.visited[i].opened=true; S.phase="street";
+  $("qscreen").hidden=true;
+  $("splashText").className="big"+(c.trick?" trick":"");
+  $("splashText").innerHTML=`${esc(c.name)}<small>${esc(c.line)} +${c.pts} for ${winners===1?"1 team":winners+" teams"}</small>`;
+  $("splash").hidden=false;
+  chime(c.trick?[300,240,180]:c.pts>=300?[523,659,784,1047]:[523,784],.14);
+  S.cur=null; S.picker=(S.picker+1)%S.names.length;
+  renderStreet(); renderTeams();
+  setTimeout(()=>{$("splash").hidden=true; if(Object.values(S.visited).filter(v=>v.opened).length===QS.length) endGame();},2000);
+}
+function cancel(){
+  if(S.phase!=="question")return;
+  stopClock(); delete S.visited[S.cur]; S.cur=null; S.phase="street"; $("qscreen").hidden=true; renderStreet();
+}
+function endGame(){
+  stopClock();
+  const sc=scores(), order=S.names.map((n,i)=>({n,s:sc[i]})).sort((a,b)=>b.s-a.s), top=order[0].s;
+  $("podium").innerHTML=order.map((o,i)=>`<div class="pod${o.s===top?" win":""}"><span class="pl">${i+1}</span><span>${esc(o.n)}</span><span>${o.s}</span></div>`).join("");
+  $("end").hidden=false; chime([523,659,784,1047],.16);
+}
+
+function startClock(){
+  stopClock();
+  timer=setInterval(()=>{
+    if(S.phase!=="question"||S.paused)return;
+    S.clock=Math.max(0,S.clock-1);
+    if(S.clock===0){stopClock();chime([220,185,147],.2)}
+    renderClock();
+  },1000);
+}
+function stopClock(){if(timer){clearInterval(timer);timer=null}}
+function renderClock(){
+  const r=$("ring");
+  if(S.phase==="question"){
+    $("secs").textContent=S.clock===0?"Show":S.clock; $("secs").style.fontSize=S.clock===0?"16px":"";
+    r.style.setProperty("--p",S.clock/S.secs); r.classList.toggle("low",S.clock<=5);
+  } else { $("secs").textContent="✓"; $("secs").style.fontSize=""; r.style.setProperty("--p",0); r.classList.remove("low"); }
+  $("qPause").textContent=S.paused?"Resume timer":"Pause timer";
+}
+
+let actx=null;
+function chime(freqs,dur){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    freqs.forEach((f,i)=>{
+      const o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime+i*dur*.8;
+      o.type="triangle";o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+dur*1.6);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+dur*1.7);
+    });
+  }catch(e){}
+}
+
+function start(){
+  const n=+$("nteams").value;
+  const names=[...Array(n)].map((_,i)=>($("team"+i).value.trim()||DEFAULT_NAMES[i]));
+  S=fresh(names,+$("tsec").value);
+  $("setup").hidden=true; $("end").hidden=true; $("qscreen").hidden=true;
+  renderStreet(); renderTeams(); window.scrollTo(0,0);
+}
+
+$("nteams").addEventListener("change",buildNameInputs);
+$("start").addEventListener("click",start);
+$("qNext").addEventListener("click",qNext);
+$("qPause").addEventListener("click",()=>{S.paused=!S.paused;renderClock()});
+$("qCancel").addEventListener("click",cancel);
+$("endBtn").addEventListener("click",endGame);
+$("backStreet").addEventListener("click",()=>{$("end").hidden=true});
+$("again").addEventListener("click",()=>{$("end").hidden=true;$("setup").hidden=false;window.scrollTo(0,0)});
+$("restart").addEventListener("click",()=>{stopClock();$("qscreen").hidden=true;$("setup").hidden=false;window.scrollTo(0,0)});
+$("full").addEventListener("click",()=>{
+  if(document.fullscreenElement){document.exitFullscreen?.().catch(()=>{})}
+  else{document.documentElement.requestFullscreen?.().catch(()=>{})}
+});
+document.addEventListener("keydown",e=>{
+  if(!$("setup").hidden){ if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();start();} return; }
+  if(!$("end").hidden||!$("splash").hidden||!S||$("qscreen").hidden)return;
+  if(e.key==="Enter"){e.preventDefault();qNext()}
+  else if(e.key===" "){e.preventDefault();if(S.phase==="question"){S.paused=!S.paused;renderClock()}}
+  else if(/^[1-6]$/.test(e.key)){toggle(+e.key-1)}
+});
+
+buildNameInputs();
+S=fresh(DEFAULT_NAMES.slice(0,4),30);
+renderStreet(); renderTeams();
+</script>
+
+</body>
+</html>
